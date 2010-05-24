@@ -32,13 +32,13 @@ get_keyboard_event (void)
   struct keyboard_input input = { 0, 0, 0 };
   SDL_Event input_event;
   get_SDL_event (&input_event);
-  switch (input_event->type)
+  switch (input_event.type)
     {
     case SDL_KEYDOWN:
     case SDL_KEYUP:
-      input.event = input_event->type;
-      input.key = input_event->type.key.keysym.sym;
-      input_modifiers = input_event->key.keysym.mod;
+      input.event = input_event.type;
+      input.key = input_event.key.keysym.sym;
+      input.modifiers = input_event.key.keysym.mod;
     }
   return input;
 }
@@ -49,7 +49,7 @@ is_key_pressed (const uint8_t key)
 		/** TODO: killing the array? maybe SDL uses a dynamic
 		 * array, or maybe is a readonly static array. **/
 
-  const uint8_t *keys = SDL_GetKeyboardState (NULL);
+  const uint8_t *keys = SDL_GetKeyState (NULL);
   return keys[key];
 }
 
@@ -59,20 +59,20 @@ get_mouse_event (void)
   struct mouse_input input = { 0, {0, 0}, {0, 0} };
   SDL_Event input_event;
   get_SDL_event (&input_event);
-  switch (input_event->type)
+  switch (input_event.type)
     {
     case SDL_MOUSEMOTION:
       input.event = SDL_MOUSEMOTION;
-      input.relative.x = input_event->motion.xrel;
-      input.relative.y = input_event->motion.yrel;
-      input.raw_position.x = input_event->motion.x;
-      input.raw_position.y = input_event->motion.y;
+      input.relative.x = input_event.motion.xrel;
+      input.relative.y = input_event.motion.yrel;
+      input.raw_position.x = input_event.motion.x;
+      input.raw_position.y = input_event.motion.y;
       break;
     case SDL_MOUSEBUTTONUP:
     case SDL_MOUSEBUTTONDOWN:
-      input.event = input_event->type;
-      input.raw_position.x = input_event->button.x;
-      input.raw_position.y = input_event->button.y;
+      input.event = input_event.type;
+      input.raw_position.x = input_event.button.x;
+      input.raw_position.y = input_event.button.y;
       break;
     }
   if (input.event != 0)
@@ -81,4 +81,17 @@ get_mouse_event (void)
       input.game_position.y = input.raw_position.y / SPRITE_SIZE;
     }
   return input;
+}
+
+struct mouse_click_info
+get_mouse_click (void)
+{
+  struct mouse_click_info info = { {0, 0}, {0, 0} };
+  struct mouse_input input;
+  while ((input = get_mouse_event ()).event != SDL_MOUSEBUTTONUP);
+  memcpy (&info.game_position, &input.game_position,
+	  sizeof (info.game_position));
+  memcpy (&info.raw_position, &input.raw_position,
+	  sizeof (info.raw_position));
+  return info;
 }

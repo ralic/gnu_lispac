@@ -21,6 +21,7 @@
 #include "objects.h"
 
 #include <SDL/SDL.h>
+#include <string.h>
 
 struct keyboard_input
 {
@@ -43,6 +44,12 @@ struct mouse_input_area
   struct position to;
 };
 
+struct mouse_click_info
+{
+  struct position game_position;
+  struct position raw_position;
+};
+
 struct keyboard_input get_keyboard_event (void);
 /** int getchar() -> from standard input **/
 /** high level keyboard checks **/
@@ -51,5 +58,6 @@ bool is_key_pressed (const uint8_t key);
 /** Mouse **/
 
 struct mouse_input get_mouse_event (void);
+struct mouse_click_info get_mouse_click (void);
 
 #endif

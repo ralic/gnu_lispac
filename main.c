@@ -18,6 +18,7 @@
 #include "objects.h"
 #include "screen.h"
 #include "tools.h"
+#include "input.h"
 
 #include <time.h>
 #include <SDL/SDL.h>
@@ -55,6 +56,8 @@ main (void)
   g_map = malloc (sizeof (struct map));
   generate_map (g_map);
   game_screen ();
-  getchar ();
+  struct mouse_click_info info = get_mouse_click ();
+  printf ("Game position: %d,%d\nRaw position: %d,%d\n", info.game_position.x,
+	  info.game_position.y, info.raw_position.x, info.raw_position.y);
   SDL_Quit ();
 }
