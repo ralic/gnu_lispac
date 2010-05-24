@@ -34,6 +34,20 @@ SDL_Surface *g_walkable_surface;
 SDL_Surface *g_wall_surface;
 SDL_Surface *g_state_bar;
 
+static void
+toggle_tile (const struct position pos)
+{
+  g_map->tiles[pos.x][pos.y].walkable = !g_map->tiles[pos.x][pos.y].walkable;
+  if (g_map->tiles[pos.x][pos.y].walkable)
+    {
+      g_map->tiles[pos.x][pos.y].surface = g_walkable_surface;
+    }
+  else
+    {
+      g_map->tiles[pos.x][pos.y].surface = g_wall_surface;
+    }
+}
+
 int
 main (void)
 {
@@ -56,8 +70,12 @@ main (void)
   g_map = malloc (sizeof (struct map));
   generate_map (g_map);
   game_screen ();
-  struct mouse_click_info info = get_mouse_click ();
-  printf ("Game position: %d,%d\nRaw position: %d,%d\n", info.game_position.x,
-	  info.game_position.y, info.raw_position.x, info.raw_position.y);
+  do
+    {
+      struct mouse_click_info info = get_mouse_click ();
+      toggle_tile (info.game_position);
+      update_game_tile (info.game_position);
+    }
+  while (!is_key_pressed (SDLK_q));
   SDL_Quit ();
 }

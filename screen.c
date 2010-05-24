@@ -153,6 +153,15 @@ game_screen (void)
 void
 update_game_tile (const struct position pos)
 {
+  const SDL_Rect rect = {
+    .x = pos.x * 32,
+    .y = pos.y * 32,
+    .w = 32,
+    .h = 32
+  };
+  SDL_BlitSurface (g_map->tiles[pos.x][pos.y].surface, &rect, g_screen,
+		   &rect);
+  SDL_Flip (g_screen);
 }
 
 void
