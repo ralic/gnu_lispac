@@ -19,12 +19,6 @@
 
 (in-package lispac)
 
-(defmacro b-or (&rest bits)
-  `(logior ,@bits))
-
-(defmacro b-and (&rest bits)
-  `(logand ,@bits))
-
 ;; tile edges mode
 (defconstant +no-connection+ 0)
 (defconstant +horitzontal-connection+ 1)
