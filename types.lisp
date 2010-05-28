@@ -103,23 +103,23 @@
    (flags :initform +no-connection+)))
 
 (defclass object ()
-  (position))
+  ((position :initform (make-position :x 0 :y 0))))
 
 (defclass life (object)
-  (count :initform 1))
+  ((count :initform 1)))
 
 (defclass point (object)
-  (type :initform +bronze-coin+))
+  ((type :initform +bronze-coin+)))
 
 (defclass creature (object)
-  (direction :initform :left))
+  ((direction :initform :left)))
 
 (defclass player (creature)
-  (points :initform 0)
-  (lifes :initform 1))
+  ((points :initform 0)
+   (lifes :initform 1)))
 
 (defclass monster (creature)
-  (state :initform :normal))
+  ((state :initform :normal)))
 
 ;; get-object-surface method
 ;;; Returns the symbol of the surface
