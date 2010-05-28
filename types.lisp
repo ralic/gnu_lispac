@@ -93,54 +93,24 @@
 (defconstant +bit-1+ 2560)
 (defconstant +diamond+ 5120)
 
-(defstruct position 
-  x 
-  y)
-
-(defclass tile () ;; Tile class should inherits object class?
-  ((surface :initform nil)
-   (position :initform (make-position :x 0 :y 0))
-   (flags :initform +no-connection+)))
+(defclass position ()
+  ((x :accessor x :initform 0)
+   (y :accessor y :initform 0)))
 
 (defclass object ()
-  ((position :initform (make-position :x 0 :y 0))))
+  ((position :accessor position :initform (make-instance 'position))))
 
-(defclass life (object)
-  ((count :initform 1)))
-
-(defclass point (object)
-  ((type :initform +bronze-coin+)))
+(defclass tile (object)
+  ((hooks :accessor hooks :initform ())
+   (paint :accessor paint :initform nil)
+   (connections :accessor connections :initform +no-connection+)))
 
 (defclass creature (object)
-  ((direction :initform :left)))
+  ((direction :accessor direction :initform :left)))
 
 (defclass player (creature)
-  ((points :initform 0)
-   (lifes :initform 1)))
+  ((lifes :accessor lifes :initform 1)
+   (points :accessor points :initform 0)))
 
 (defclass monster (creature)
-  ((state :initform :normal)))
-
-;; get-object-surface method
-;;; Returns the symbol of the surface
-
-(defmethod get-object-surface (object object)
-  nil)
-
-(defmethod get-object-surface (life life)
-  '+life-surface+)
-
-(defmethod get-object-surface (point pointobj)
-  (case (type pointobj)
-    ((+bronze-coin+) '+bronze-coin-surface+)
-    ((+silver-coin+) '+silver-coin-surface+)
-    ((+golden-coin+) '+golden-coin-surface+)
-    ((+cherry+) '+cherry-surface+)
-    ((+banana+) '+banana-surface+)
-    ((+melon+) '+melon-surface+)
-    ((+water-melon+) '+water-melon-surface+)
-    ((+golden-cherry+) '+golden-cherry-surface+)
-    ((+bit-0+) '+bit-0-surface+)
-    ((+bit-1+) '+bit-1-surface+)
-    ((+diamond+) '+diamond-surface+)
-    (otherwise nil)))
+  ((state :accessor state :initform :normal)))
