@@ -19,16 +19,15 @@
 
 (in-package :lispac)
 
-(defmacro defsurface (symbol path)
-  `(defconst ,symbol (sdl:load-image ,(concatenate 'string "inc/" path))))
-
 ;; Sprite size
 (defconst +sprite-height+ 32)
 (defconst +sprite-width+ 32)
 (defconst +sprite-size+ (* +sprite-height+ +sprite-width+))
 (defconst +pixel-size+ 32) ; Truecolor + 8A (in bits)
-(defparameter *camera-start-x* 0)
-(defparameter *camera-start-y* 0)
+(defparameter *camera-x* 0)
+(defparameter *camera-y* 0)
+(defconst *camera-width* (/ (width SDL:*DEFAULT-SURFACE*) +sprite-width+))
+(defconst *camera-height* (/ (height SDL:*DEFAULT-SURFACE*) +sprite-height+))
 ;; Wall surfaces
 (defsurface +top-wall-surface+          "walls/top.bmp")
 (defsurface +left-wall-surface+         "walls/left.bmp")
@@ -92,4 +91,4 @@
 (defsurface +life-object-surface+ "points/life.bmp")
 (defsurface +unknown-surface+ "unknown.bmp")
 
-;; parameteres.lisp ends here
+;; parameters.lisp ends here

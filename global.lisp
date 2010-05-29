@@ -27,4 +27,24 @@
   `(unless (boundp (quote ,name))
      (defconstant ,name ,value)))
 
+(defclass position ()
+  ((x :accessor x :initform 0)
+   (y :accessor y :initform 0)))
+
+(defun pos= (pos1 pos2)
+  (and (= (x pos1) (x pos2))
+       (= (y pos1) (y pos2))))
+
+(defun in-range-p (start end point)
+  (and (>= (x point) (x start))
+       (<= (x point) (x end))
+       (>= (y point) (y start))
+       (<= (y point) (y end))))
+
+(defun in-range-p* (start width height point)
+  (let ((end (make-instance 'position 
+                            :x (+ (x start) width)
+                            :y (+ (y start) height))))
+    (is-in-range start end point)))
+
 ;; utils.lisp ends here

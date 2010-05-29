@@ -19,13 +19,17 @@
 
 (in-package :lispac)
 
-(defun in-screen-p (map-x map-y)
-  (not (or (< map-x *camera-start-x*) 
-           (> map-x *camera-end-x)
-           (< map-y *camera-start-y*) 
-           (> map-y *camera-end-y*))))
+(defun in-screen-p (board-x board-y)
+  (in-range-p* (make-instance 'position
+                             :x *camera-x*
+                             :y *camera-y*)
+              *camera-width*
+              *camera-height*
+              (make-instance 'position
+                             :x board-x
+                             :y board-y)))
 
-(defun distance-to-end ()
+(defun distance-to-end (board-width board-height)
   (let (x y)
     (setq x (- (width SDL:*DEFAULT-SURFACE*) *camera-end-x*))
     (setq y (- (height SDL:*DEFAULT-SURFACE*) *camera-end-y*))
@@ -43,6 +47,7 @@
     (incf *camera-end-x* x-relative)
     (incf *camera-start-y* y-relative)
     (incf *camera-end-y* y-relative)))
+
 
 (defun default-print (x y)
   (if (in-screen-p x y)
