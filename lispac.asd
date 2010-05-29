@@ -21,9 +21,9 @@
 (defsystem :lispac
   :name "Lispac"
   :license "GPLv3+"
-  :depends-on (:cl-sdl)
+  :depends-on (:lispbuilder-sdl)
   :serial t
   :components
   ((:static-file "COPYING")
    (:file "package")
-   (:file "types")))
+   (:file "display")))

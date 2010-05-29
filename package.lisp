@@ -18,7 +18,7 @@
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 (defpackage :lispac
-  (:use :cl)
+  (:use :cl :lispbuilder-sdl)
   (:export 
                                         ;fill all
    ))
