@@ -20,7 +20,7 @@
 (in-package :lispac)
 
 (defmacro defsurface (symbol img)
-  `(defconstant ,symbol (sdl:load-image ,(append "inc/" ,img))))
+  `(defconstant ,symbol `(sdl:load-image ,(concatenate 'string "inc/" ,img))))
 
 ;; Sprite size
 (defconstant +sprite-height+ 32)
@@ -123,7 +123,7 @@
   (if (in-screen-p x y)
       (draw-surface-at-* +unknown-surface+ 
                          (* x +sprite-width+) 
-                         (* y +sprite-width))
+                         (* y +sprite-height+))
     nil))
 
 (defclass printable-object ()
