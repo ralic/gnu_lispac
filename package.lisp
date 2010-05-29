@@ -1,4 +1,4 @@
-;; package.lisp
+;; package.lisp - lispac package definition
 ;;
 ;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
 ;;
@@ -18,8 +18,9 @@
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 (defpackage :lispac
-  (:use :cl :lispbuilder-sdl)
-  (:export 
-                                        ;fill all
+  (:use :cl)
+  (:export
+   ;; Nothing, by the moment
    ))
 
+;; package.lisp ends here

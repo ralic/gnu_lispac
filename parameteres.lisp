@@ -19,16 +19,14 @@
 
 (in-package :lispac)
 
-(defmacro defsurface (symbol img)
-  `(defconstant ,symbol (sdl:load-image ,(append "inc/" ,img))))
+(defmacro defsurface (symbol path)
+  `(defconst ,symbol (sdl:load-image ,(concatenate 'string "inc/" path))))
 
 ;; Sprite size
-(defconstant +sprite-height+ 32)
-(defconstant +sprite-width+ 32)
-(defconstant +sprite-size+ (* +sprite-height+ +sprite-width+))
-(defconstant +pixel-size+ 32) ; Truecolor + 8A (in bits)
-(defparameter *camera-end-x* (/ (height SDL:*DEFAULT-SURFACE*) +sprite-height+))
-(defparameter *camera-end-x* (/ (width SDL:*DEFAULT-SURFACE*) + sprite-width+))
+(defconst +sprite-height+ 32)
+(defconst +sprite-width+ 32)
+(defconst +sprite-size+ (* +sprite-height+ +sprite-width+))
+(defconst +pixel-size+ 32) ; Truecolor + 8A (in bits)
 (defparameter *camera-start-x* 0)
 (defparameter *camera-start-y* 0)
 ;; Wall surfaces
@@ -94,37 +92,4 @@
 (defsurface +life-object-surface+ "points/life.bmp")
 (defsurface +unknown-surface+ "unknown.bmp")
 
-(defun in-screen-p (map-x map-y)
-  (not (or (< map-x *camera-start-x*) 
-           (> map-x *camera-end-x)
-           (< map-y *camera-start-y*) 
-           (> map-y *camera-end-y*))))
-
-(defun distance-to-end ()
-  (let (x y)
-    (setq x (- (width SDL:*DEFAULT-SURFACE*) *camera-end-x*))
-    (setq y (- (height SDL:*DEFAULT-SURFACE*) *camera-end-y*))
-    (cons x y)))
-
-(defun camera-move (x-relative y-relative)
-  (let ((margins (distance-to-end)))
-    (if (> (+ x-relative *camera-end-x*) (car margins))
-        (setf (car margins) (- (+ x-relative *camera-end-x*) (car margins)))
-      (setf (car margins) (x-relative)))
-    (if (> (+ y-relative *camera-end-y*) (cdr margins))
-        (setf (cdr margins) (- (+ y-relative *camera-end-y*) (cdr margins)))
-      (setf (cdr margins) (y-relative)))
-    (incf *camera-start-x* x-relative)
-    (incf *camera-end-x* x-relative)
-    (incf *camera-start-y* y-relative)
-    (incf *camera-end-y* y-relative)))
-
-(defun default-print (x y)
-  (if (in-screen-p x y)
-      (draw-surface-at-* +unknown-surface+ 
-                         (* x +sprite-width+) 
-                         (* y +sprite-width))
-    nil))
-
-(defclass printable-object ()
-  ((pfun :accessor print-function :initform 'default-print)))
+;; parameteres.lisp ends here

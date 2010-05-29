@@ -1,6 +1,6 @@
-;; lispac.asd - ASDF system definition
+;; utils.lisp - Functions and macros than don't fit anywhere else.
 ;;
-;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
+;; Copyright (C) 2010  Mario Castelan Castro
 ;;
 ;; This file is part of lispac.
 ;;
@@ -16,16 +16,11 @@
 ;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
-;;
 
-(defsystem :lispac
-  :name "Lispac"
-  :license "GPLv3+"
-  :depends-on (:lispbuilder-sdl)
-  :components
-  ((:static-file "COPYING")
-   (:file "package")
-   (:file "utils"
-          :depends-on ("package"))))
+(in-package :lispac)
 
-;; lispac.asd ends here
+(defmacro defconst (name value)
+  `(unless (boundp (quote ,name))
+     (defconstant ,name ,value)))
+
+;; utils.lisp ends here
