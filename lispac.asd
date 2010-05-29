@@ -25,7 +25,9 @@
   :components
   ((:static-file "COPYING")
    (:file "package")
-   (:file "utils"
-          :depends-on ("package"))))
+   (:file "global"
+          :depends-on ("package"))
+   (:file "display"
+          :depends-on ("global" "parameters"))))
 
 ;; lispac.asd ends here
