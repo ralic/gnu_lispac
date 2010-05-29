@@ -1,6 +1,7 @@
 ;; utils.lisp - Functions and macros than don't fit anywhere else.
 ;;
 ;; Copyright (C) 2010  Mario Castelan Castro
+;; Copyright (C) 2010  Kevin Mas Ruiz <sorancio>
 ;;
 ;; This file is part of lispac.
 ;;
@@ -19,6 +20,9 @@
 
 (in-package :lispac)
 
+(defmacro defsurface (symbol path)
+  `(defconst ,symbol (sdl:load-image ,(concatenate 'string "inc/" path))))
+  
 (defmacro defconst (name value)
   `(unless (boundp (quote ,name))
      (defconstant ,name ,value)))
