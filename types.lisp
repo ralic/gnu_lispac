@@ -19,16 +19,25 @@
 
 (in-package lispac)
 
-;; tile edges mode
+;; Sprite size
+(defconstant +sprite-height+ 32)
+(defconstant +sprite-width+ 32)
+(defconstant +sprite-size+ (* +sprite-height+ +sprite-width+))
+(defconstant +pixel-size+ 32) ; Truecolor + 8A (in bits)
+;; Tile edges mode
 (defconstant +no-connection+ 0)
 (defconstant +horitzontal-connection+ 1)
 (defconstant +vertical-connection+ 2)
-(defconstant +full-connection+ 3) ; (b-or 1 2)
+(defconstant +full-connection+ 3) ; (logior 1 2)
 ;; Wall surfaces
 (defconstant +top-wall-surface+ nil)
 (defconstant +left-wall-surface+ nil)
 (defconstant +bottom-wall-surface+ nil)
 (defconstant +right-wall-surface+ nil)
+(defconstant +top-left-wall-connection-surface+ nil)
+(defconstant +top-right-wall-connection-surface+ nil)
+(defconstant +bottom-left-wall-connection-surface+ nil)
+(defconstant +bottom-right-wall-connection-surface+ nil)
 ; Point surfaces
 (defconstant +bronze-coin-surface+ nil)
 (defconstant +silver-coin-surface+ nil)
@@ -79,7 +88,7 @@
 (defconstant +angry-monster-down-surface+ nil)
 (defconstant +angry-monster-down-moving-surface+ nil)
 ;; Other surfaces
-(defconstant +life-surface+ nil)
+(defconstant +life-object-surface+ nil)
 ;; Point value constants
 (defconstant +bronze-coin+ 5)
 (defconstant +silver-coin+ 10)
@@ -100,7 +109,7 @@
 (defclass object ()
   ((position :accessor position :initform (make-instance 'position))))
 
-(defclass tile (object)
+(defclass tile ()
   ((hooks :accessor hooks :initform ())
    (paint :accessor paint :initform nil)
    (connections :accessor connections :initform +no-connection+)))
@@ -114,3 +123,21 @@
 
 (defclass monster (creature)
   ((state :accessor state :initform :normal)))
+
+(defclass map ()
+  ((tiles :accessor tiles :initform ())
+   (plyres :accessor player-respawn :initform (make-instance 'position))
+   (monres :accessor monster-respawn :initform (make-instance 'position))))
+
+(defun init-map (map width height)
+  (dotimes (x width)
+    (let ((row ()))
+      (dotimes (y height)
+        (let ((tile (make-instance 'tile)))
+          (setq row (append row tile))))
+      (setq (tiles map) (append (tiles map) row)))))
+
+(defun tile (x y map)
+  (let ((tiles-list (tiles map)) (row (nth x tiles-list)) (tile (nth y row)))
+    tile))
+
