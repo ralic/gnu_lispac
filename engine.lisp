@@ -19,6 +19,10 @@
 
 (in-package :lispac)
 
+(defclass printable-object ()
+  ((printer :accessor printer
+            :type function)))
+
 (defclass board ()
   ((tiles :accessor board-tiles-array
           :type (array tile))))
@@ -27,7 +31,7 @@
   ((type :accessor tile-type)))
 
 
-;;;; Constructors & accessors
+;;; Constructors & accessors
 
 (defun make-map (width height &optional tile)
   (let ((tiles (make-array (list width height)

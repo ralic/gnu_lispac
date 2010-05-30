@@ -27,7 +27,6 @@
   ((:static-file "COPYING")
    (:file "package")
    (:file "global")
-   (:file "display")
    (:file "engine")))
 
 ;; lispac.asd ends here
