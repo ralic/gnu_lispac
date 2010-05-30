@@ -19,16 +19,19 @@
 ;;
 
 (defsystem :lispac
-  :name "Lispac"
+  :name "lispac"
   :license "GPLv3+"
   :depends-on (:lispbuilder-sdl)
   :components
   ((:static-file "COPYING")
    (:file "package")
+   (:file "lispac")
+   (:file "parameters"
+          :depends-on ("lispac"))
    (:file "global"
           :depends-on ("package"))
    (:file "display"
-          :depends-on ("global" "package"))
+          :depends-on ("global" "package" "parameters"))
    (:file "map"
           :depends-on ("display" "package"))))
 

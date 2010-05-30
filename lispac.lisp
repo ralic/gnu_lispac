@@ -1,7 +1,6 @@
-;; display.lisp
+;; lispac.lisp
 ;;
-;; Copyrigth (C) 2010  Kevin Mas Ruiz <sorancio>
-;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
+;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
 ;;
 ;; This file is part of lispac.
 ;;
@@ -20,21 +19,10 @@
 
 (in-package :lispac)
 
-;; Start of help functions
-(defun on-camera-p (point)
-  (declare (point point))
-  (and (<= *camera-x* (x point) (+ *camera-x* width))
-       (<= *camera-y* (y point) (+ *camera-y* height))))
-
-(defun on-camera-p* (x y)
-  (declare (integer x y))
-  (and (<= *camera-x* x (+ *camera-x* width))
-       (<= *camera-y* y (+ *camera-y* height))))
-
-;; End of help functions
-
-(defclass printable-object ()
-  ((printer :accessor printer
-            :type function)))
-
-;; display.lisp ends here
+(sdl:with-init ()
+  (sdl:window 320 240)
+  (sdl:draw-filled-circle-* 50 50 120 :color (sdl:color :r 9 :g 10 :b 93) :stroke-color (sdl:color :r 25 :g 12 :b 12))
+  (sdl:update-display)
+    (sdl:with-events ()
+      (:quit-event () t)
+      (:video-expose-event () (sdl:update-display))))

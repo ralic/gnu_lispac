@@ -1,4 +1,4 @@
-;; utils.lisp - Functions and macros than don't fit anywhere else.
+;; global.lisp - Functions and macros than don't fit anywhere else.
 ;;
 ;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
 ;; Copyright (C) 2010  Kevin Mas Ruiz <sorancio>
@@ -33,10 +33,10 @@
    (y :accessor y
       :type integer)))
 
-(defmethod point= (a b)
-  (declare (point a b))
-  (and (= (x a) (x b))
-       (= (y a) (y b))))
+(defmethod point= (p1 p2)
+  (declare (point p1 p2))
+  (and (= (x p1) (x p2))
+       (= (y p1) (y p2))))
 
 (defun square-contains-p (start end point)
   (declare (point start end point))

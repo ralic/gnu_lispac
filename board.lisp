@@ -1,4 +1,4 @@
-;; map.lisp - Map & terrain base.
+;; board.lisp - Map & terrain base.
 ;;
 ;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
 ;;
@@ -26,7 +26,6 @@
 (defclass tile (printable-object)
   ((type :accessor tile-type)))
 
-
 ;;;; Constructors & accessors
 
 (defun make-map (width height &optional tile)
