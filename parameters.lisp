@@ -19,15 +19,23 @@
 
 (in-package :lispac)
 
-;; Sprite size
+;; SDL must be initialized here because those constants depends
+;; on sdl:*DEFAULT-SURFACE*
+(unless (sdl:init-sdl :video :cdrom) ;; Also audio?
+  (error "Couldn't initialise lispbuilder-sdl"))
+;; Rembember to exit from SDL on lispac.lisp!!
+
+;; Video constants
 (defconst +sprite-height+ 32)
 (defconst +sprite-width+ 32)
 (defconst +sprite-size+ (* +sprite-height+ +sprite-width+))
 (defconst +pixel-size+ 32) ; Truecolor + 8A (in bits)
-(defparameter *camera-x* 0)
+(defparameter *amera-x* 0)
 (defparameter *camera-y* 0)
-(defconst *camera-width* (/ (sdl:width sdl:*DEFAULT-SURFACE*) +sprite-width+))
-(defconst *camera-height* (/ (sdl:height sdl:*DEFAULT-SURFACE*) +sprite-height+))
+(defconst *window-width* 320)
+(defconst *window-height* 320)
+(defconst *camera-width* (/ *window-width* +sprite-width+))
+(defconst *camera-height* (/ *window-height* +sprite-height+))
 ;; Wall surfaces
 (defsurface +top-wall-surface+          "walls/top.bmp")
 (defsurface +left-wall-surface+         "walls/left.bmp")

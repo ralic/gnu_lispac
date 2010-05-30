@@ -19,10 +19,10 @@
 
 (in-package :lispac)
 
-(sdl:with-init ()
-  (sdl:window 320 240)
-  (sdl:draw-filled-circle-* 50 50 120 :color (sdl:color :r 9 :g 10 :b 93) :stroke-color (sdl:color :r 25 :g 12 :b 12))
-  (sdl:update-display)
-    (sdl:with-events ()
-      (:quit-event () t)
-      (:video-expose-event () (sdl:update-display))))
+(sdl:window 320 240)
+(sdl:draw-filled-circle-* 50 50 120 :color (sdl:color :r 9 :g 10 :b 93) :stroke-color (sdl:color :r 25 :g 12 :b 12))
+(sdl:update-display)
+(sdl:with-events ()
+  (:quit-event () t)
+  (:video-expose-event () (sdl:update-display)))
+(sdl:quit-sdl t)

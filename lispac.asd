@@ -25,14 +25,15 @@
   :components
   ((:static-file "COPYING")
    (:file "package")
-   (:file "lispac")
    (:file "parameters"
-          :depends-on ("lispac"))
+          :depends-on ("package"))
    (:file "global"
           :depends-on ("package"))
    (:file "display"
           :depends-on ("global" "package" "parameters"))
-   (:file "map"
-          :depends-on ("display" "package"))))
+   (:file "board"
+          :depends-on ("display" "package"))
+   (:file "lispac"
+          :depends-on ("package" "parameters" "global" "display" "board"))))
 
 ;; lispac.asd ends here
