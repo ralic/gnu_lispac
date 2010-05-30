@@ -1,4 +1,4 @@
-;; utils.lisp - Functions and macros than don't fit anywhere else.
+;; global.lisp - Functions and macros than don't fit anywhere else.
 ;;
 ;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
 ;; Copyright (C) 2010  Kevin Mas Ruiz <sorancio>
@@ -27,6 +27,17 @@
   `(unless (boundp (quote ,name))
      (defconstant ,name ,value)))
 
+;;; Like `defun' but declare the function as inline.
+(defmacro definline (name args &body body)
+  `(progn
+     (declaim (inline ,name))
+     (defun ,name ,args ,@body)))
+
+(defmacro define-inline-method (name args &body body)
+  `(progn
+     (declaim (inline ,name))
+     (defmethod ,name ,args ,@body)))
+
 (defclass point ()
   ((x :accessor x
       :type integer)
@@ -50,4 +61,4 @@
     (and (<= left (x point) (+ left width))
          (<= top (y point) (+ top height)))))
 
-;; utils.lisp ends here
+;; global.lisp ends here

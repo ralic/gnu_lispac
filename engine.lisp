@@ -1,4 +1,4 @@
-;; map.lisp - Map & terrain base.
+;; engine.lisp
 ;;
 ;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
 ;;
@@ -50,4 +50,4 @@
   (declare (board board))
   (array-dimension (board-tiles-array board) 1))
 
-;; map.lisp ends here
+;; engine.lisp ends here

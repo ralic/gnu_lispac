@@ -22,14 +22,12 @@
   :name "Lispac"
   :license "GPLv3+"
   :depends-on (:lispbuilder-sdl)
+  :serial t
   :components
   ((:static-file "COPYING")
    (:file "package")
-   (:file "global"
-          :depends-on ("package"))
-   (:file "display"
-          :depends-on ("global" "package"))
-   (:file "map"
-          :depends-on ("display" "package"))))
+   (:file "global")
+   (:file "display")
+   (:file "engine")))
 
 ;; lispac.asd ends here
