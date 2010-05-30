@@ -1,6 +1,6 @@
 ;; utils.lisp - Functions and macros than don't fit anywhere else.
 ;;
-;; Copyright (C) 2010  Mario Castelan Castro
+;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
 ;; Copyright (C) 2010  Kevin Mas Ruiz <sorancio>
 ;;
 ;; This file is part of lispac.
@@ -27,24 +27,27 @@
   `(unless (boundp (quote ,name))
      (defconstant ,name ,value)))
 
-(defclass position ()
-  ((x :accessor x :initform 0)
-   (y :accessor y :initform 0)))
+(defclass point ()
+  ((x :accessor x
+      :type integer)
+   (y :accessor y
+      :type integer)))
 
-(defun pos= (pos1 pos2)
-  (and (= (x pos1) (x pos2))
-       (= (y pos1) (y pos2))))
+(defmethod point= (a b)
+  (declare (point a b))
+  (and (= (x a) (x b))
+       (= (y a) (y b))))
 
-(defun in-range-p (start end point)
-  (and (>= (x point) (x start))
-       (<= (x point) (x end))
-       (>= (y point) (y start))
-       (<= (y point) (y end))))
+(defun square-contains-p (start end point)
+  (declare (point start end point))
+  (and (<= (x start) (x point) (x end))
+       (<= (x start) (y point) (y end))))
 
-(defun in-range-p* (start width height point)
-  (let ((end (make-instance 'position 
-                            :x (+ (x start) width)
-                            :y (+ (y start) height))))
-    (is-in-range start end point)))
+(defun square-contains-p* (top-left width height point)
+  (declare (point top-left point))
+  (declare (integer width height))
+  (with-slots ((left x) (top y)) top-left
+    (and (<= left (x point) (+ left width))
+         (<= top (y point) (+ top height)))))
 
 ;; utils.lisp ends here
