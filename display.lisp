@@ -1,6 +1,7 @@
 ;; display.lisp
 ;;
-;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
+;; Copyrigth (C) 2010  Kevin Mas Ruiz <sorancio>
+;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
 ;;
 ;; This file is part of lispac.
 ;;
@@ -19,42 +20,8 @@
 
 (in-package :lispac)
 
-(defun in-screen-p (board-x board-y)
-  (in-range-p* (make-instance 'position
-                             :x *camera-x*
-                             :y *camera-y*)
-              *camera-width*
-              *camera-height*
-              (make-instance 'position
-                             :x board-x
-                             :y board-y)))
-
-(defun distance-to-end (board-width board-height)
-  (let (x y)
-    (setq x (- (width SDL:*DEFAULT-SURFACE*) *camera-end-x*))
-    (setq y (- (height SDL:*DEFAULT-SURFACE*) *camera-end-y*))
-    (cons x y)))
-
-(defun camera-move (x-relative y-relative)
-  (let ((margins (distance-to-end)))
-    (if (> (+ x-relative *camera-end-x*) (car margins))
-        (setf (car margins) (- (+ x-relative *camera-end-x*) (car margins)))
-      (setf (car margins) (x-relative)))
-    (if (> (+ y-relative *camera-end-y*) (cdr margins))
-        (setf (cdr margins) (- (+ y-relative *camera-end-y*) (cdr margins)))
-      (setf (cdr margins) (y-relative)))
-    (incf *camera-start-x* x-relative)
-    (incf *camera-end-x* x-relative)
-    (incf *camera-start-y* y-relative)
-    (incf *camera-end-y* y-relative)))
-
-
-(defun default-print (x y)
-  (if (in-screen-p x y)
-      (draw-surface-at-* +unknown-surface+ 
-                         (* x +sprite-width+) 
-                         (* y +sprite-height+))
-    nil))
-
 (defclass printable-object ()
-  ((pfun :accessor print-function :initform 'default-print)))
+  ((printer :accessor printer
+            :type function)))
+
+;; display.lisp ends here
