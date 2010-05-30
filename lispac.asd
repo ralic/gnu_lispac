@@ -28,6 +28,6 @@
    (:file "global"
           :depends-on ("package"))
    (:file "display"
-          :depends-on ("global" "parameters"))))
+          :depends-on ("global"))))
 
 ;; lispac.asd ends here
