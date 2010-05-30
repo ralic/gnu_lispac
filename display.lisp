@@ -33,8 +33,16 @@
 
 ;; End of help functions
 
+;; The reason of a default-printer function is that undefined printing 
+;; behavior can call this function and prevent fatal errors on sdl.
+(defun default-printer (object x y)
+  (declare (integer x y))
+  (declare (printable-object object))
+  (if (on-camera-p* x y)
+      (sdl:draw-surface-at-* +unknown-surface+ x y)))
+
 (defclass printable-object ()
   ((printer :accessor printer
-            :type function)))
+            :type function :initform 'default-printer)))
 
 ;; display.lisp ends here

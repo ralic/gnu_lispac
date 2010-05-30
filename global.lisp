@@ -50,4 +50,4 @@
     (and (<= left (x point) (+ left width))
          (<= top (y point) (+ top height)))))
 
-;; utils.lisp ends here
+;; global.lisp ends here

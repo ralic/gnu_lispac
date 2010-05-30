@@ -21,7 +21,7 @@
 
 ;; SDL must be initialized here because those constants depends
 ;; on sdl:*DEFAULT-SURFACE*
-(unless (sdl:init-sdl :video :cdrom) ;; Also audio?
+(unless (sdl:init-sdl :video :audio) ;; Also audio?
   (error "Couldn't initialise lispbuilder-sdl"))
 ;; Rembember to exit from SDL on lispac.lisp!!
 
