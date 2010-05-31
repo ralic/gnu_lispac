@@ -1,9 +1,10 @@
 ;; global.lisp - Functions and macros than don't fit anywhere else.
 ;;
-;; Copyright (C) 2010  Mario Castelan Castro <marioxcc>
+;; Copyrigth (C) 2009, 2010  David Vázquez
+;; Copyrigth (C) 2009, 2010  Mario Castelán Castro <marioxcc>
 ;; Copyright (C) 2010  Kevin Mas Ruiz <sorancio>
 ;;
-;; This file is part of lispac.
+;; This file is part of lispac.  Some macros are from cl-icalendar.
 ;;
 ;; lispac is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -37,6 +38,19 @@
   `(progn
      (declaim (inline ,name))
      (defmethod ,name ,args ,@body)))
+
+(defmacro with-gensyms ((&rest vars) &body code)
+  `(let ,(loop for i in vars
+	       collect (etypecase i
+			 (symbol `(,i (gensym ,(symbol-name i))))
+			 (list `(,(first i) (gensym ,(second i))))))
+     ,@code))
+
+(defmacro dotimes* ((var from times) &body body)
+  (with-gensyms (from-var)
+    `(let ((,from-var ,from))
+       (loop for ,var from ,from-var to (+ ,from-var ,times)
+             do (progn ,@body)))))
 
 (defclass point ()
   ((x :accessor x
