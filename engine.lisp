@@ -33,11 +33,11 @@
 
 ;;; Constructors & accessors
 
-(defun make-map (width height &optional tile)
+(defun make-board (width height &optional tile)
   (let ((tiles (make-array (list width height)
                            :initial-element tile
-                           :element-type tile)))
-    (make-instance 'map
+                           :element-type '(or tile (member nil)))))
+    (make-instance 'board
                    :tiles tiles)))
 
 (define-inline-method tile-at ((board board) x y)
