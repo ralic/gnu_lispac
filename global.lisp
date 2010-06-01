@@ -21,6 +21,9 @@
 
 (in-package :lispac)
 
+
+;;; Definitions
+
 (defmacro defsurface (symbol path)
   `(defconst ,symbol (sdl:load-image ,(concatenate 'string "inc/" path))))
   
@@ -46,29 +49,106 @@
 			 (list `(,(first i) (gensym ,(second i))))))
      ,@code))
 
+(defmacro compare-slots (a b (&rest slots) &optional (test 'eql))
+  (with-gensyms (a-tmp b-tmp)
+    `(let ((,a-tmp ,a)
+           (,b-tmp ,b))
+       (and ,@(loop for slot in slots
+                    collect `(,test (slot-value ,a-tmp ',slot)
+                                    (slot-value ,b-tmp ',slot)))))))
+
 (defmacro dotimes* ((var from times) &body body)
   (with-gensyms (from-var)
     `(let ((,from-var ,from))
        (loop for ,var from ,from-var to (+ ,from-var ,times)
              do (progn ,@body)))))
 
+
+;;; Geometry
+
 (defclass point ()
   ((x :accessor x
-      :type integer)
+      :type fixnum)
    (y :accessor y
-      :type integer)))
+      :type fixnum)))
 
-(defmethod point= (a b)
+(defclass rectangle ()
+  ((left :accessor left
+         :type fixnum
+         :initarg :left)
+   (top :accessor top
+        :type fixnum
+        :initarg :top)
+   (right :accessor right
+          :type fixnum
+          :initarg :right)
+   (bottom :accessor bottom
+           :type fixnum
+           :initarg :bottom)))
+
+(defgeneric containsp (container object))
+(defgeneric intersectsp (a b))
+
+(defun make-point (x y)
+  (declare (fixnum x y))
+  (make-instance 'point
+                 :x x
+                 :y y))
+
+(defun make-rectangle (left top width height)
+  (declare (fixnum left top width height))
+  (make-instance 'rectangle
+                 :left left
+                 :right (the fixnum (+ left width))
+                 :top top
+                 :bottom (the fixnum (+ top height))))
+
+(defun make-rectangle-* (left top right bottom)
+  (declare (fixnum left right top bottom))
+  (make-instance 'rectangle
+                 :left left
+                 :right right
+                 :top top
+                 :bottom bottom))
+
+(defun point= (a b)
   (declare (point a b))
-  (and (= (x a) (x b))
-       (= (y a) (y b))))
+  (compare-slots a b (x y) =))
 
-(defun square-contains-p (start end point)
-  (declare (point start end point))
-  (and (<= (x start) (x point) (x end))
-       (<= (x start) (y point) (y end))))
+(defun rectangle= (a b)
+  (declare (rectangle a b))
+  (compare-slots a b (left right top bottom) =))
 
-(defun square-contains-p* (top-left width height point)
+;; TODO: test and document this funciton
+(defmethod intersectsp ((a rectangle) (b rectangle))
+  ;; given 2 ranges, described by boundaries, is their intersection
+  ;; the void set?
+  (flet ((range-intersects-p (a-min a-max b-min b-max)
+           (<= (max a-min b-min) (min a-max b-max))))
+    (and (range-intersects-p (left a) (right a) (left b) (right b))
+         (range-intersects-p (top a) (bottom a) (top b) (bottom b)))))
+
+(defmethod containsp ((container rectangle) (object rectangle))
+  (with-slots ((container-left left)
+               (container-right right)
+               (container-top top)
+               (container-bottom bottom))
+      container
+    (with-slots (left right top bottom) object
+      (and (<= container-left left right container-right)
+           (<= container-top top bottom container-bottom)))))
+  
+(defmethod containps ((container rectangle) (object point))
+  (with-slots ((container-left left)
+               (container-right right)
+               (container-top top)
+               (container-bottom bottom))
+      container
+    (with-slots (x y) object
+      (and (<= container-left x container-right)
+           (<= container-top y container-bottom)))))
+
+(defun rectangle-contains-p* (top-left width height point)
   (declare (point top-left point))
   (declare (integer width height))
   (with-slots ((left x) (top y)) top-left
