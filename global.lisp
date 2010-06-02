@@ -57,11 +57,10 @@
                     collect `(,test (slot-value ,a-tmp ',slot)
                                     (slot-value ,b-tmp ',slot)))))))
 
-(defmacro dotimes* ((var from times) &body body)
-  (with-gensyms (from-var)
-    `(let ((,from-var ,from))
-       (loop for ,var from ,from-var to (+ ,from-var ,times)
-             do (progn ,@body)))))
+(defmacro dorange ((var from to &optional (by 1)) &body body)
+  `(do ((,var ,from (+ ,var ,by)))
+       ((> ,var ,to) nil)
+     ,@body))
 
 
 ;;; Geometry
