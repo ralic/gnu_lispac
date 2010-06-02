@@ -30,7 +30,47 @@
 (defclass tile (printable-object)
   ((type :accessor tile-type)))
 
-
+(defclass hook ()
+  ((function :accessor function
+             :type function)
+   (action :accessor action)
+   (target :accessor target)))
+
+(defclass creature-sprites ()
+  ((up :accessor up)
+   (movement-up :accessor movement-up)
+   (left :accessor left)
+   (movement-left :accessor movement-left)
+   (down :accessor down)
+   (movement-down :accessor movement-down)
+   (right :accessor right)
+   (movement-right :accessor movement-right)))
+
+(defclass monster-prototype ()
+  ((sprites :accessor sprites)
+   (points :accessor points
+           :type integer)
+   (delay :accessor delay
+          :type integer)))
+
+(defclass monster ()
+  ((state :accessor state)
+   (point :accessor point)
+   (prototype :accessor prototype)
+   (hooks :accessor hooks
+          :type list)))
+
+(defclass player ()
+  ((sprites :accessor sprites)
+   (lifes :accessor lifes
+          :type integer)
+   (score :accessor score
+          :type integer)
+   (point :accessor point
+          :type integer)
+   (hooks :accessor hooks
+          :type list)))
+
 ;;; Constructors & accessors
 
 (defun make-board (width height &optional tile)
@@ -54,4 +94,15 @@
   (declare (board board))
   (array-dimension (board-tiles-array board) 1))
 
+(defmethod add-hook ((monster monster) &key (action :view) function target)
+  (declare (function function))
+  (push (hooks monster) (make-instance 'hook :action action
+                                       :function function
+                                       :target target)))
+
+(defmethod add-hook ((player player) &key (action :view) function target)
+  (declare (function function))
+  (push (hooks player) (make-instance 'hook :action action
+                                       :function function
+                                       :target target)))
 ;; engine.lisp ends here

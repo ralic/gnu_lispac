@@ -24,10 +24,8 @@
 (defconst +sprite-width+ 32)
 (defconst +sprite-size+ (* +sprite-height+ +sprite-width+))
 (defconst +pixel-size+ 32) ; Truecolor + 8A (in bits)
-(defparameter *camera-x* 0)
-(defparameter *camera-y* 0)
-(defconst *camera-width* (/ (width SDL:*DEFAULT-SURFACE*) +sprite-width+))
-(defconst *camera-height* (/ (height SDL:*DEFAULT-SURFACE*) +sprite-height+))
+(defconst *camera-width* 5)
+(defconst *camera-height* 5)
 ;; Wall surfaces
 (defsurface +top-wall-surface+          "walls/top.bmp")
 (defsurface +left-wall-surface+         "walls/left.bmp")
