@@ -16,9 +16,12 @@
 ;;; Time handling
 (defvar *fps* 60)
 (defvar *ticks* 0)
-
+(defvar *speed* 2)
+(defvar *score* 0)
+(defvar *orange* (color :r 255 :g 127 :b 0))
 ;;; Background color
 (defvar *background* *black*)
+(defvar *point-radius* 2)
 
 (defclass pacman ()
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
@@ -43,10 +46,39 @@
     :initarg :radius
     :type fixnum
     :initform 12
-    :reader pacman-radius)))
+    :accessor pacman-radius)))
+
+(defclass point ()
+  (
+   (count :type integer
+          :accessor point-count
+          :initform 0
+          :initarg :count)
+   (x :type fixnum
+      :accessor point-x
+      :initform 0
+      :initarg :x)
+   (y :type fixnum
+      :accessor point-y
+      :initform 0
+      :initarg :y)))
 
 ;;; The yellow ball :-)
+
 (defvar *pacman*)
+(defvar *points* ())
+
+(defun add-point (count x y)
+  (push (make-instance 'point :count count :x x :y y) *points*))
+
+(defun pacman-add-point (pac count)
+  (with-slots ((r radius) x y direction)
+      pac
+    (ecase direction
+      (:up (add-point count x (+ y r)))
+      (:down (add-point count x (- y r)))
+      (:left (add-point count (+ x r) y))
+      (:right (add-point count (- x r) y)))))
 
 (defgeneric draw (pac)
   (:method ((pac pacman))
@@ -80,13 +112,71 @@
     (:sdl-key-left
      (setf (pacman-direction *pacman*) :left))
     (:sdl-key-right
-     (setf (pacman-direction *pacman*) :right))))
+     (setf (pacman-direction *pacman*) :right))
+    (:sdl-key-f1
+     (setf *background* *red*))
+    (:sdl-key-f2
+     (setf *background* *black*))
+    (:sdl-key-f3
+     (setf *background* *white*))
+    (:sdl-key-f4
+     (setf *background* *magenta*))
+    (:sdl-key-f5
+     (setf *background* *blue*))
+    (:sdl-key-f6
+     (setf *background* *yellow*))
+    (:sdl-key-a
+     (incf *speed*))
+    (:sdl-key-s
+     (decf *speed*))
+    (:sdl-key-d
+     (incf (pacman-radius *pacman*)))
+    (:sdl-key-f
+     (decf (pacman-radius *pacman*)))
+    (:sdl-key-x
+     (pacman-add-point *pacman* 5))
+    (:sdl-key-q
+     (incf *point-radius*))
+    (:sdl-key-w
+     (decf *point-radius*))
+    (:sdl-key-t
+     (setf (pacman-x *pacman*) (/ *width* 2))
+     (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))))
+
+(defun update-points ()
+  (loop for j in *points*
+     do (draw-filled-circle-* (point-x j) (point-y j) 
+                              *point-radius* :color *orange*)))
+             
+(defun update-state ()
+  (with-surface (panel-surface (create-surface *width* 100))
+    (fill-surface *black*)
+    (draw-string-solid-* "Lispac" 10 10)
+    (draw-string-solid-* (format nil "FPS ~d Speed ~d" (frame-rate) *speed*) 
+                         10 35)
+    (draw-string-solid-* (format nil "Radius ~d" (pacman-radius *pacman*)) 
+                         10 60)
+    (draw-string-solid-* (format nil ":: Score ~d ::" *score*) 
+                         (/ *width* 2) 60 :justify :left)
+    (blit-surface panel-surface *default-display*)))
+
+(defun check-get-point ()
+  (let ((ret ()))
+    (loop for j in *points*
+       do (if (and (< (- (point-x j) *point-radius*)
+                      (- (pacman-x *pacman*) (pacman-radius *pacman*))
+                      (+ (point-x j) *point-radius*))
+                   (< (- (point-y j) *point-radius*)
+                      (- (pacman-y *pacman*) (pacman-radius *pacman*))
+                      (+ (point-y j) *point-radius*)))
+              (incf *score* (point-count j))
+              (push j ret)))
+    ret))
 
 
 (defun update ()
   (setf *ticks* (mod (1+ *ticks*) *fps*))
   (clear-display *background* :surface *default-surface*)
-  (draw-rectangle-* 0 0 *width* *height* :color *blue*)
   (draw *pacman*)
   (with-slots (x y direction radius)
       *pacman*
@@ -94,16 +184,21 @@
       (case direction
         (:up
          (unless (< y r)
-           (decf y 2)))
+           (decf y *speed*)))
         (:down
          (unless (<  (- *height* r) y)
-           (incf y 2)))
+           (incf y *speed*)))
         (:left
          (unless (< x r)
-           (decf x 2)))
+           (decf x *speed*)))
         (:right
          (unless (< (- *width* r) x)
-           (incf x 2))))))
+           (incf x *speed*))))))
+  (update-state)
+  (setq *points* (check-get-point))
+  (update-points)
+  (draw-rectangle-* 0 100 *width* *height* :color *red* 
+                    :surface *default-display*)
   (update-display))
 
 ;;; Run pacman
@@ -113,7 +208,6 @@
       (setf (frame-rate) *fps*)
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
-      (draw-string-solid-* "Lispac" 10 10 )
       (let ((*pacman* (make-instance 'pacman)))
         (with-surface (*default-surface* (create-surface *width* *height* :y 100))
           (with-events ()
