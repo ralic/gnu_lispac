@@ -1,5 +1,26 @@
 ;;; lispac.lisp
 
+;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
+
+;; Special thanks to a _not_ anonymous for us, but for everybody else,
+;; who wrote and donated the base of lispac.
+
+;; This file is part of lispac.
+
+;; lispac is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; lispac is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
+
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :lispbuilder-sdl)
   (require :lispbuilder-sdl-gfx))
