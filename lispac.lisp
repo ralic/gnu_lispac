@@ -168,9 +168,16 @@
      (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))))
 
 (defun update-points ()
-  (loop for j in *points*
-     do (draw-filled-circle-* (point-x j) (point-y j) 
-                              *point-radius* :color *orange*)))
+  (loop with new-points = nil
+        for point in *points*
+        do (cond
+             ((pacman-eat-point-p point)
+              (incf *score*))
+             (t 
+              (draw-filled-circle-* (point-x point) (point-y point) 
+                                    *point-radius* :color *orange*)
+              (push point new-points)))
+        finally (setf *points* new-points)))
              
 (defun update-state ()
   (with-surface (panel-surface (create-surface *width* 100))
@@ -183,15 +190,6 @@
     (draw-string-solid-* (format nil ":: Score ~d ::" *score*) 
                          (/ *width* 2) 60 :justify :left)
     (blit-surface panel-surface *default-display*)))
-
-(defun check-get-point ()
-  (let ((ret ()))
-    (loop for j in *points*
-       do (if (pacman-eat-point-p j)
-              (incf *score* (point-count j))
-              (push j ret)))
-    ret))
-
 
 (defun update ()
   (setf *ticks* (mod (1+ *ticks*) *fps*))
@@ -214,7 +212,6 @@
          (unless (< (- *width* r) x)
            (incf x *speed*))))))
   (update-state)
-  (setq *points* (check-get-point))
   (update-points)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
                     :surface *default-display*)
