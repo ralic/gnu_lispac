@@ -79,13 +79,17 @@
 
 ;;; Assignators
 
-(defun* zerof (&rest (symbol vars))
-  (loop for j in vars
-       do (setf j 0)))
+(defmacro multiple-setf (value &rest places)
+  (with-gensyms (tmp)
+    `(let ((,tmp ,value))
+       ,@(loop for place in places
+               collect `(setf ,place ,tmp)))))
 
-(defun* nilf (&rest (symbol vars))
-  (loop for j in vars
-       do (setf j nil)))
+(defmacro zerof (&rest places)
+  `(multiple-setf 0 ,@places))
+
+(defmacro nilf (&rest places)
+  `(multiple-setf nil ,@places))
 
 
 ;;; utils.lisp ends here
