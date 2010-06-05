@@ -21,10 +21,6 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
-
-(defpackage :lispac
-  (:use :cl :lispbuilder-sdl))
-
 (in-package :lispac)
 
 ;;; Board dimmensions
@@ -86,10 +82,10 @@
 (defvar *pacman*)
 (defvar *points* ())
 
-(defun add-point (count x y)
+(defun* add-point ((integer count x y))
   (push (make-instance 'point :count count :x x :y y) *points*))
 
-(defun pacman-add-point (pac count)
+(defun* pacman-add-point ((pacman pac) (integer count))
   (with-slots ((r radius) x y direction)
       pac
     (ecase direction
@@ -98,8 +94,7 @@
       (:left (add-point count (+ x r) y))
       (:right (add-point count (- x r) y)))))
 
-(defun pacman-eat-point-p (point)
-  (declare (point point))
+(defun* pacman-eat-point-p ((point point))
   (< (distance-* (pacman-x *pacman*) (pacman-y *pacman*)
                  (point-x point) (point-y point))
      (+ (pacman-radius *pacman*) *point-radius*)))
@@ -188,7 +183,7 @@
     (draw-string-solid-* (format nil "Radius ~d" (pacman-radius *pacman*)) 
                          10 60)
     (draw-string-solid-* (format nil ":: Score ~d ::" *score*) 
-                         (/ *width* 2) 60 :justify :left)
+                         (/ *width* 2) 60 :justify :right)
     (blit-surface panel-surface *default-display*)))
 
 (defun update ()

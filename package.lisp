@@ -1,4 +1,4 @@
-;;; lispac.asd - lispac ASDF system definition
+;;; package.lisp - lispac package definition
 
 ;; This file is part of lispac.
 
@@ -15,18 +15,5 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
-(defsystem :lispac
-  :name "lispac"
-  :license "GPLv3+"
-  :depends-on (:lispbuilder-sdl
-               :lispbuilder-sdl-gfx)
-  :components
-  ((:static-file "COPYING")
-   (:static-file "README")
-   (:file "package")
-   (:file "utils"
-          :depends-on ("package"))
-   (:file "lispac"
-          :depends-on ("package"))))
-
-;;; lispac.asd ends here
+(defpackage :lispac
+  (:use :cl :lispbuilder-sdl))
