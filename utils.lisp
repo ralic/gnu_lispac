@@ -63,6 +63,9 @@
        ,@declarations
        ,@body)))
 
+(defmacro defconst (name value)
+  `(unless (boundp (quote ,name))
+     (defconstant ,name ,value)))
 
 (defmacro defcolor (symbol &key r g b)
   `(defconstant ,symbol ,(color :r r :g g :b b)))
