@@ -1,4 +1,4 @@
-;;; utils.lisp
+;;; utils.lisp - Generic macros & functions.
 
 ;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
 
@@ -19,7 +19,8 @@
 
 (in-package :lispac)
 
-;; Definition macros
+
+;;; Definitions & declarations
 
 (defmacro defun* (name (&rest params) &body body)
   (let (declarations real-params)
@@ -51,7 +52,8 @@
                                     :pixel-alpha alpha
                                     :x x :y y)))
 
-;; Fast assignations
+
+;;; Assignators
 
 (defun* zerof (&rest (symbol vars))
   (loop for j in vars
@@ -61,3 +63,5 @@
   (loop for j in vars
        do (setf j nil)))
 
+
+;;; utils.lisp ends here
