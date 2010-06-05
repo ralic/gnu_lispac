@@ -21,10 +21,6 @@
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require :lispbuilder-sdl)
-  (require :lispbuilder-sdl-gfx))
-
 (defpackage :pacman
   (:use :cl :lispbuilder-sdl))
 
