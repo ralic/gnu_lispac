@@ -1,6 +1,7 @@
 ;;; lispac.lisp
 
 ;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
+;; Copyrigth (C) 2010 Mario Castelan Castro <marioxcc>
 
 ;; Special thanks to a _not_ anonymous for us, but for everybody else,
 ;; who wrote and donated the base of lispac.
@@ -97,6 +98,12 @@
       (:left (add-point count (+ x r) y))
       (:right (add-point count (- x r) y)))))
 
+(defun pacman-eat-point-p (point)
+  (declare (point point))
+  (< (distance-* (pacman-x *pacman*) (pacman-y *pacman*)
+                 (point-x point) (point-y point))
+     (+ (pacman-radius *pacman*) *point-radius*)))
+
 (defgeneric draw (pac)
   (:method ((pac pacman))
     (with-slots ((r radius) x y direction)
@@ -180,12 +187,7 @@
 (defun check-get-point ()
   (let ((ret ()))
     (loop for j in *points*
-       do (if (and (< (- (point-x j) *point-radius*)
-                      (- (pacman-x *pacman*) (pacman-radius *pacman*))
-                      (+ (point-x j) *point-radius*))
-                   (< (- (point-y j) *point-radius*)
-                      (- (pacman-y *pacman*) (pacman-radius *pacman*))
-                      (+ (point-y j) *point-radius*)))
+       do (if (pacman-eat-point-p j)
               (incf *score* (point-count j))
               (push j ret)))
     ret))
