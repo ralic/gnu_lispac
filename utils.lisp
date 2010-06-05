@@ -1,8 +1,12 @@
 ;;; utils.lisp - Generic macros & functions.
 
+;; Copyrigth (C) 2009, 2010 Mario Castelán Castro <marioxcc>
+;; Copyrigth (C) 2009, 2010 David Vázquez
 ;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
 
 ;; This file is part of lispac.
+
+;; with-gensyms and with-collecting are from 
 
 ;; lispac is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,6 +22,26 @@
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 (in-package :lispac)
+
+
+;;; Misc
+
+(defmacro with-gensyms ((&rest vars) &body code)
+  `(let ,(loop for i in vars
+	       collect (etypecase i
+			 (symbol `(,i (gensym ,(symbol-name i))))
+			 (list `(,(first i) (gensym ,(second i))))))
+     ,@code))
+
+(defmacro with-collecting (&body code)
+  (with-gensyms (collected tail)
+    `(let* ((,collected (list '#:collect))
+            (,tail ,collected))
+       (flet ((collect (x)
+                (setf (cdr ,tail) (list x))
+                (setf ,tail (cdr ,tail))))
+         ,@code)
+       (cdr ,collected))))
 
 
 ;;; Definitions & declarations
