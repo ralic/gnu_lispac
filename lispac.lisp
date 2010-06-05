@@ -21,10 +21,10 @@
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 
-(defpackage :pacman
+(defpackage :lispac
   (:use :cl :lispbuilder-sdl))
 
-(in-package :pacman)
+(in-package :lispac)
 
 ;;; Board dimmensions
 (defvar *width*  600)
