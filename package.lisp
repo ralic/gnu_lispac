@@ -17,3 +17,5 @@
 
 (defpackage :lispac
   (:use :cl :lispbuilder-sdl))
+
+;;; package.lisp ends here
