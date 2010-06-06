@@ -27,6 +27,6 @@
    (:file "utils"
           :depends-on ("package"))
    (:file "lispac"
-          :depends-on ("package"))))
+          :depends-on ("package" "utils"))))
 
 ;;; lispac.asd ends here
