@@ -69,8 +69,8 @@
 
 (defmacro defcolor (name r g b &optional a)
   (if a
-      `(defconst ,symbol ,(color :r ,r :g ,g :b ,b :a ,a))
-      `(defconst ,symbol ,(color :r ,r :g ,g :b ,b))))
+      `(defconst ,name (color :r ,r :g ,g :b ,b :a ,a))
+      `(defconst ,name (color :r ,r :g ,g :b ,b))))
 
 (defmacro defsurface (symbol width height &key (bpp 32) (alpha 255) x y)
   `(defvar ,symbol ,(create-surface width height :alpha t
