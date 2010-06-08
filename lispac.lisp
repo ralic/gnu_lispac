@@ -23,9 +23,14 @@
 
 (in-package :lispac)
 
-;;; Board dimmensions
+;;; Board
 (defvar *width*  600)
 (defvar *height* 400)
+(defvar *board*)
+(defvar *board-width*)
+(defvar *board-height*)
+(defvar *board-surface*)
+(defvar *tile-size* 12)
 
 ;;; Time handling
 (defvar *fps* 60)
@@ -119,6 +124,11 @@
            (sdl-gfx:draw-filled-pie-* x y r (- 360 (round a 2)) (round a 2) :color *background*)
            (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*)))))))
 
+(defun generate-dumb-board ()
+  (dotimes (x *board-width*)
+    (dotimes (y *board-height*)
+      (setf (aref *board* x y) (and (divisiblep x 4)
+                                    (divisiblep y 4))))))
 
 (defun keypress (key)
   (case key
@@ -162,6 +172,16 @@
      (setf (pacman-x *pacman*) (/ *width* 2))
      (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))))
 
+(defun update-board ()
+  (dotimes (y *board-height*)
+    (dotimes (x *board-width*)
+      (draw-box-* (* *tile-size* x) (* *tile-size* y)
+                  *tile-size* *tile-size*
+                  :surface *board-surface*
+                  :color (if (aref *board* x y)
+                             *red*
+                             *black*)))))
+
 (defun update-points ()
   (loop with new-points = nil
         for point in *points*
@@ -189,6 +209,7 @@
 (defun update ()
   (setf *ticks* (mod (1+ *ticks*) *fps*))
   (clear-display *background* :surface *default-surface*)
+  (blit-surface *board-surface*)
   (draw *pacman*)
   (with-slots (x y direction radius)
       *pacman*
@@ -220,7 +241,14 @@
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
       (setf *pacman* (make-instance 'pacman))
+      (setf *board-width* (floor (/ *width* *tile-size*)))
+      (setf *board-height* (floor (/ *height* *tile-size*)))
+      (setf *board* (make-array (list *board-width* *board-height*)
+                                :element-type '(member t nil)))
+      (generate-dumb-board)
       (with-surface (*default-surface* (create-surface *width* *height* :y 100))
+        (setf *board-surface* (create-surface *width* *height*))
+        (update-board)
         (with-events ()
           (:quit-event () t)
           (:key-down-event (:key key) (keypress key))
