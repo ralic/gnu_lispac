@@ -208,9 +208,7 @@
 
 (defun update ()
   (setf *ticks* (mod (1+ *ticks*) *fps*))
-  (clear-display *background* :surface *default-surface*)
   (blit-surface *board-surface*)
-  (draw *pacman*)
   (with-slots (x y direction radius)
       *pacman*
     (let ((r (+ radius 5)))
@@ -227,6 +225,7 @@
         (:right
          (unless (< (- *width* r) x)
            (incf x *speed*))))))
+  (draw *pacman*)
   (update-state)
   (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
