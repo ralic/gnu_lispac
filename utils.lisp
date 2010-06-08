@@ -43,6 +43,10 @@
          ,@code)
        (cdr ,collected))))
 
+(defun divisiblep (m n)
+  (declare (integer m n))
+  (zerop (mod m n)))
+
 
 ;;; Definitions & declarations
 
