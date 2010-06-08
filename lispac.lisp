@@ -40,7 +40,7 @@
 (defvar *orange* (color :r 255 :g 127 :b 0))
 ;;; Background color
 (defvar *background* *black*)
-(defvar *point-radius* 2)
+(defvar *target-radius* 2)
 
 (defclass pacman ()
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
@@ -67,42 +67,42 @@
     :initform 12
     :accessor pacman-radius)))
 
-(defclass point ()
+(defclass target ()
   (
    (count :type integer
-          :accessor point-count
+          :accessor target-count
           :initform 0
           :initarg :count)
    (x :type fixnum
-      :accessor point-x
+      :accessor target-x
       :initform 0
       :initarg :x)
    (y :type fixnum
-      :accessor point-y
+      :accessor target-y
       :initform 0
       :initarg :y)))
 
 ;;; The yellow ball :-)
 
 (defvar *pacman*)
-(defvar *points* ())
+(defvar *targets* ())
 
-(defun* add-point ((integer count x y))
-  (push (make-instance 'point :count count :x x :y y) *points*))
+(defun* add-target ((integer count x y))
+  (push (make-instance 'target :count count :x x :y y) *targets*))
 
-(defun* pacman-add-point ((pacman pac) (integer count))
+(defun* pacman-add-target ((pacman pac) (integer count))
   (with-slots ((r radius) x y direction)
       pac
     (ecase direction
-      (:up (add-point count x (+ y r)))
-      (:down (add-point count x (- y r)))
-      (:left (add-point count (+ x r) y))
-      (:right (add-point count (- x r) y)))))
+      (:up (add-target count x (+ y r)))
+      (:down (add-target count x (- y r)))
+      (:left (add-target count (+ x r) y))
+      (:right (add-target count (- x r) y)))))
 
-(defun* pacman-eat-point-p ((point point))
+(defun* pacman-eat-target-p ((target target))
   (< (distance-* (pacman-x *pacman*) (pacman-y *pacman*)
-                 (point-x point) (point-y point))
-     (+ (pacman-radius *pacman*) *point-radius*)))
+                 (target-x target) (target-y target))
+     (+ (pacman-radius *pacman*) *target-radius*)))
 
 (defgeneric draw (pac)
   (:method ((pac pacman))
@@ -163,11 +163,11 @@
     (:sdl-key-f
      (decf (pacman-radius *pacman*)))
     (:sdl-key-x
-     (pacman-add-point *pacman* 5))
+     (pacman-add-target *pacman* 5))
     (:sdl-key-q
-     (incf *point-radius*))
+     (incf *target-radius*))
     (:sdl-key-w
-     (decf *point-radius*))
+     (decf *target-radius*))
     (:sdl-key-t
      (setf (pacman-x *pacman*) (/ *width* 2))
      (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))))
@@ -182,17 +182,17 @@
                              *red*
                              *black*)))))
 
-(defun update-points ()
-  (loop with new-points = nil
-        for point in *points*
+(defun update-targets ()
+  (loop with new-targets = nil
+        for target in *targets*
         do (cond
-             ((pacman-eat-point-p point)
+             ((pacman-eat-target-p target)
               (incf *score*))
              (t 
-              (draw-filled-circle-* (point-x point) (point-y point) 
-                                    *point-radius* :color *orange*)
-              (push point new-points)))
-        finally (setf *points* new-points)))
+              (draw-filled-circle-* (target-x target) (target-y target) 
+                                    *target-radius* :color *orange*)
+              (push target new-targets)))
+        finally (setf *targets* new-targets)))
              
 (defun update-state ()
   (with-surface (panel-surface (create-surface *width* 100))
@@ -228,7 +228,7 @@
          (unless (< (- *width* r) x)
            (incf x *speed*))))))
   (update-state)
-  (update-points)
+  (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
                     :surface *default-display*)
   (update-display))
