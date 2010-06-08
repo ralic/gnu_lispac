@@ -209,23 +209,21 @@
 (defun update ()
   (setf *ticks* (mod (1+ *ticks*) *fps*))
   (blit-surface *board-surface*)
-  (with-slots (x y direction radius)
+
+  ;; Update pacman
+  (with-slots (x y direction (r radius))
       *pacman*
-    (let ((r (+ radius 5)))
-      (case direction
-        (:up
-         (unless (< y r)
-           (decf y *speed*)))
-        (:down
-         (unless (<  (- *height* r) y)
-           (incf y *speed*)))
-        (:left
-         (unless (< x r)
-           (decf x *speed*)))
-        (:right
-         (unless (< (- *width* r) x)
-           (incf x *speed*))))))
+    (case direction
+      (:up
+       (setf y (max r (- y *speed*))))
+      (:down
+       (setf y (min (- *height* r) (+ y *speed*))))
+      (:left
+       (setf x (max r (- x *speed*))))
+      (:right
+       (setf x (min (- *width* r) (+ x *speed*))))))
   (draw *pacman*)
+
   (update-state)
   (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
