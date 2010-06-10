@@ -6,7 +6,7 @@
 
 ;; This file is part of lispac.
 
-;; with-gensyms and with-collecting are from 
+;; with-gensyms and with-collecting are from
 
 ;; lispac is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@
                       (eq 'param '&optional))
             (etypecase param
               (list (progn
-                      (push `(declare (type ,(car param) ,@(cdr param))) 
+                      (push `(declare (type ,(car param) ,@(cdr param)))
                             declarations)
                       (loop for each-param in (cdr param)
                          do (push each-param real-params))))
@@ -82,7 +82,7 @@
 
 (defmacro defsurface (symbol width height &key (bpp 32) (alpha 255) x y)
   `(defvar ,symbol ,(create-surface width height :alpha t
-                                    :bpp bpp 
+                                    :bpp bpp
                                     :pixel-alpha alpha
                                     :x x :y y)))
 

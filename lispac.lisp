@@ -70,8 +70,7 @@
     :accessor pacman-radius)))
 
 (defclass target ()
-  (
-   (count :type integer
+  ((count :type integer
           :accessor target-count
           :initform 0
           :initarg :count)
@@ -85,8 +84,7 @@
       :initarg :y)))
 
 (defclass game-clock ()
-  (
-   (ticks :type fixnum
+  ((ticks :type fixnum
           :accessor game-clock-ticks
           :initform 0
           :initarg :t)
@@ -126,7 +124,7 @@
                               (progn (incf (game-clock-hours clock))
                                      (zerof (game-clock-minutes clock))))
                           (zerof (game-clock-seconds clock))))
-               (zerof (game-clock-ticks clock)))))) 
+               (zerof (game-clock-ticks clock))))))
 
 (defun* add-clock ((string name))
   (setf (gethash name *user-clocks*) (make-instance 'game-clock)))
@@ -275,23 +273,23 @@
         do (cond
              ((pacman-eat-target-p target)
               (incf *score*))
-             (t 
-              (draw-filled-circle-* (target-x target) (target-y target) 
+             (t
+              (draw-filled-circle-* (target-x target) (target-y target)
                                     *target-radius* :color *orange*)
               (push target new-targets)))
         finally (setf *targets* new-targets)))
-             
+
 (defun update-state ()
   (with-surface (panel-surface (create-surface *width* 100))
     (fill-surface *black*)
     (draw-string-solid-* "Lispac" 10 10)
-    (draw-string-solid-* (format nil "FPS ~d Speed ~d" (frame-rate) *speed*) 
+    (draw-string-solid-* (format nil "FPS ~d Speed ~d" (frame-rate) *speed*)
                          10 35)
-    (draw-string-solid-* (format nil "Radius ~d" (pacman-radius *pacman*)) 
+    (draw-string-solid-* (format nil "Radius ~d" (pacman-radius *pacman*))
                          10 60)
-    (draw-string-solid-* (format nil ":: Score ~d ::" *score*) 
+    (draw-string-solid-* (format nil ":: Score ~d ::" *score*)
                          (/ *width* 2) 60 :justify :right)
-    (draw-string-solid-* (format-clock *clock*) 
+    (draw-string-solid-* (format-clock *clock*)
                          (/ *width* 2) 30 :justify :right)
     (blit-surface panel-surface *default-display*)))
 
@@ -336,7 +334,7 @@
   (update-pacman)
   (update-state)
   (update-targets)
-  (draw-rectangle-* 0 100 *width* *height* :color *red* 
+  (draw-rectangle-* 0 100 *width* *height* :color *red*
                     :surface *default-display*)
   (update-display))
 
