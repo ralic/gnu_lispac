@@ -43,6 +43,10 @@
          ,@code)
        (cdr ,collected))))
 
+(defmacro dorange ((var min max &optional (step 1)) &body body)
+  `(loop for ,var from ,min to ,max by ,step
+         do (progn ,@body)))
+
 (defun divisiblep (m n)
   (declare (integer m n))
   (zerop (mod m n)))
