@@ -23,9 +23,14 @@
 
 (in-package :lispac)
 
-;;; Board dimmensions
+;;; Board
 (defvar *width*  600)
 (defvar *height* 400)
+(defvar *board*)
+(defvar *board-width*)
+(defvar *board-height*)
+(defvar *board-surface*)
+(defvar *tile-size* 12)
 
 ;;; Time handling
 (defvar *fps* 60)
@@ -35,6 +40,9 @@
 ;;; Background color
 (defvar *background* *black*)
 (defvar *target-radius* 2)
+
+;; If non-nil, print the tiles the units uses.
+(defvar *print-units-rectangles-p* nil)
 
 (defclass pacman ()
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
@@ -185,6 +193,27 @@
            (sdl-gfx:draw-filled-pie-* x y r (- 360 (round a 2)) (round a 2) :color *background*)
            (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*)))))))
 
+(defun generate-dumb-board ()
+  (dotimes (x *board-width*)
+    (dotimes (y *board-height*)
+      (setf (aref *board* x y) (and (divisiblep x 4)
+                                    (divisiblep y 4))))))
+
+(defun board-square-clear-p (left top right bottom)
+  (block function
+    (dorange (x left right)
+      (dorange (y top bottom)
+        (when (aref *board* x y)
+          (return-from function nil))))
+    t))
+
+(defun board-row-clear-p (y &optional left right)
+  (board-square-clear-p (or left 0) y
+                        (or right (1- *board-width*)) y))
+
+(defun board-column-clear-p (x &optional top bottom)
+  (board-square-clear-p x (or top 0)
+                        x (or bottom (1- *board-height*))))
 
 (defun keypress (key)
   (case key
@@ -230,6 +259,16 @@
     (:sdl-key-c
      (clock-toggle *clock*))))
 
+(defun update-board ()
+  (dotimes (y *board-height*)
+    (dotimes (x *board-width*)
+      (draw-box-* (* *tile-size* x) (* *tile-size* y)
+                  *tile-size* *tile-size*
+                  :surface *board-surface*
+                  :color (if (aref *board* x y)
+                             *red*
+                             *black*)))))
+
 (defun update-targets ()
   (loop with new-targets = nil
         for target in *targets*
@@ -256,27 +295,45 @@
                          (/ *width* 2) 30 :justify :right)
     (blit-surface panel-surface *default-display*)))
 
-(defun update ()
-  (clock-tick *clock*)
-  (clocks-tick)
-  (clear-display *background* :surface *default-surface*)
-  (draw *pacman*)
-  (with-slots (x y direction radius)
+(defun update-pacman ()
+  (with-slots (x y direction (r radius))
       *pacman*
-    (let ((r (+ radius 5)))
+    (let (
+          ;; Tiles wich pacman use as a square
+          (left (floor (- x r) *tile-size*))
+          (top (floor (- y r) *tile-size*))
+          (right (floor (+ x r) *tile-size*))
+          (bottom (floor (+ y r) *tile-size*)))
+      (when *print-units-rectangles-p*
+        (let ((pacman-square (rectangle-from-edges-*
+                              (* *tile-size* left)
+                              (* *tile-size* top)
+                              (1- (* *tile-size* (1+ right)))
+                              (1- (* *tile-size* (1+ bottom))))))
+          (draw-rectangle pacman-square :color *white*)))
       (case direction
         (:up
-         (unless (< y r)
-           (decf y *speed*)))
+         (setf y (max (cond
+                        ((zerop top)
+                         r)
+                        ((board-row-clear-p (1- top) left right)
+                         (+ (* *tile-size* (1- top)) r))
+                        (t
+                         (+ (* *tile-size* top) r)))
+                      (- y *speed*))))
         (:down
-         (unless (<  (- *height* r) y)
-           (incf y *speed*)))
+         (setf y (min (- *height* r) (+ y *speed*))))
         (:left
-         (unless (< x r)
-           (decf x *speed*)))
+         (setf x (max r (- x *speed*))))
         (:right
-         (unless (< (- *width* r) x)
-           (incf x *speed*))))))
+         (setf x (min (- *width* r) (+ x *speed*)))))))
+  (draw *pacman*))
+
+(defun update ()
+  (blit-surface *board-surface*)
+  (clock-tick *clock*)
+  (clocks-tick)
+  (update-pacman)
   (update-state)
   (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
@@ -291,7 +348,14 @@
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
       (setf *pacman* (make-instance 'pacman))
+      (setf *board-width* (floor (/ *width* *tile-size*)))
+      (setf *board-height* (floor (/ *height* *tile-size*)))
+      (setf *board* (make-array (list *board-width* *board-height*)
+                                :element-type '(member t nil)))
+      (generate-dumb-board)
       (with-surface (*default-surface* (create-surface *width* *height* :y 100))
+        (setf *board-surface* (create-surface *width* *height*))
+        (update-board)
         (with-events ()
           (:quit-event () t)
           (:key-down-event (:key key) (keypress key))
