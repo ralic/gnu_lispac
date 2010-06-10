@@ -42,6 +42,10 @@
 (defvar *background* *black*)
 (defvar *target-radius* 2)
 
+;; If non-nil, print the tiles the units uses.
+(defvar *print-units-rectangles-p* nil)
+
+
 (defclass pacman ()
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
    ;; to rotation and more.
@@ -130,6 +134,22 @@
       (setf (aref *board* x y) (and (divisiblep x 4)
                                     (divisiblep y 4))))))
 
+(defun board-square-clear-p (left top right bottom)
+  (block function
+    (dorange (x left right)
+      (dorange (y top bottom)
+        (when (aref *board* x y)
+          (return-from function nil))))
+    t))
+
+(defun board-row-clear-p (y &optional left right)
+  (board-square-clear-p (or left 0) y
+                        (or right (1- *board-width*)) y))
+
+(defun board-column-clear-p (x &optional top bottom)
+  (board-square-clear-p x (or top 0)
+                        x (or bottom (1- *board-height*))))
+
 (defun keypress (key)
   (case key
     (:sdl-key-escape
@@ -206,24 +226,44 @@
                          (/ *width* 2) 60 :justify :right)
     (blit-surface panel-surface *default-display*)))
 
+(defun update-pacman ()
+  (with-slots (x y direction (r radius))
+      *pacman*
+    (let (
+          ;; Tiles wich pacman use as a square
+          (left (floor (- x r) *tile-size*))
+          (top (floor (- y r) *tile-size*))
+          (right (floor (+ x r) *tile-size*))
+          (bottom (floor (+ y r) *tile-size*)))
+      (when *print-units-rectangles-p*
+        (let ((pacman-square (rectangle-from-edges-*
+                              (* *tile-size* left)
+                              (* *tile-size* top)
+                              (1- (* *tile-size* (1+ right)))
+                              (1- (* *tile-size* (1+ bottom))))))
+          (draw-rectangle pacman-square :color *white*)))
+      (case direction
+        (:up
+         (setf y (max (cond
+                        ((zerop top)
+                         r)
+                        ((board-row-clear-p (1- top) left right)
+                         (+ (* *tile-size* (1- top)) r))
+                        (t
+                         (+ (* *tile-size* top) r)))
+                      (- y *speed*))))
+        (:down
+         (setf y (min (- *height* r) (+ y *speed*))))
+        (:left
+         (setf x (max r (- x *speed*))))
+        (:right
+         (setf x (min (- *width* r) (+ x *speed*)))))))
+  (draw *pacman*))
+
 (defun update ()
   (setf *ticks* (mod (1+ *ticks*) *fps*))
   (blit-surface *board-surface*)
-
-  ;; Update pacman
-  (with-slots (x y direction (r radius))
-      *pacman*
-    (case direction
-      (:up
-       (setf y (max r (- y *speed*))))
-      (:down
-       (setf y (min (- *height* r) (+ y *speed*))))
-      (:left
-       (setf x (max r (- x *speed*))))
-      (:right
-       (setf x (min (- *width* r) (+ x *speed*))))))
-  (draw *pacman*)
-
+  (update-pacman)
   (update-state)
   (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
