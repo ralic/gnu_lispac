@@ -29,13 +29,12 @@
 
 ;;; Time handling
 (defvar *fps* 60)
-(defvar *ticks* 0)
 (defvar *speed* 2)
 (defvar *score* 0)
 (defvar *orange* (color :r 255 :g 127 :b 0))
 ;;; Background color
 (defvar *background* *black*)
-(defvar *point-radius* 2)
+(defvar *target-radius* 2)
 
 (defclass pacman ()
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
@@ -62,48 +61,115 @@
     :initform 12
     :accessor pacman-radius)))
 
-(defclass point ()
+(defclass target ()
   (
    (count :type integer
-          :accessor point-count
+          :accessor target-count
           :initform 0
           :initarg :count)
    (x :type fixnum
-      :accessor point-x
+      :accessor target-x
       :initform 0
       :initarg :x)
    (y :type fixnum
-      :accessor point-y
+      :accessor target-y
       :initform 0
       :initarg :y)))
+
+(defclass game-clock ()
+  (
+   (ticks :type fixnum
+          :accessor game-clock-ticks
+          :initform 0
+          :initarg :t)
+   (seconds :type fixnum
+            :accessor game-clock-seconds
+            :initform 0
+            :initarg :s)
+   (minutes :type fixnum
+            :accessor game-clock-minutes
+            :initform 0
+            :initarg :m)
+   (hours :type fixnum
+          :accessor game-clock-hours
+          :initform 0
+          :initarg :h)
+   (stop :accessor game-clock-stop
+         :initform nil)))
 
 ;;; The yellow ball :-)
 
 (defvar *pacman*)
-(defvar *points* ())
+(defvar *targets* ())
+(defvar *clock* (make-instance 'game-clock))
+(defvar *user-clocks* (make-hash-table))
 
-(defun* add-point ((integer count x y))
-  (push (make-instance 'point :count count :x x :y y) *points*))
+(defun* clock-toggle ((game-clock clock))
+  (setf (game-clock-stop clock) (not (game-clock-stop clock))))
 
-(defun* pacman-add-point ((pacman pac) (integer count))
+(defun* clock-tick ((game-clock clock))
+  (unless (game-clock-stop clock)
+    (incf (game-clock-ticks clock))
+    (if (= (game-clock-ticks clock) *fps*)
+        (progn (incf (game-clock-seconds clock))
+               (if (= (game-clock-seconds clock) 60)
+                   (progn (incf (game-clock-minutes clock))
+                          (if (= (game-clock-minutes clock) 60)
+                              (progn (incf (game-clock-hours clock))
+                                     (zerof (game-clock-minutes clock))))
+                          (zerof (game-clock-seconds clock))))
+               (zerof (game-clock-ticks clock)))))) 
+
+(defun* add-clock ((string name))
+  (setf (gethash name *user-clocks*) (make-instance 'game-clock)))
+
+(defun* get-clock ((string name))
+  (gethash name *user-clocks*))
+
+(defun* delete-clock ((string name))
+  (setf (gethash name *user-clocks*) nil))
+
+(defun clocks-tick ()
+  (loop for i being the hash-value of *user-clocks*
+       do (clock-tick i)))
+
+(defun* format-clock ((game-clock clock))
+  (with-slots (ticks seconds minutes hours)
+      clock
+  (format nil "~d:~d:~d - ~d" hours minutes seconds ticks)))
+
+(defun* add-target ((integer count x y))
+  (push (make-instance 'target :count count :x x :y y) *targets*))
+
+(defmacro with-timer ((name var func) &body body)
+  (add-clock name)
+  `(let ((,var ,(get-clock name)))
+     ,func
+     (clock-toggle ,var)
+     (with-slots (ticks seconds minutes hours)
+         ,var
+       ,@body)))
+
+(defun* pacman-add-target ((pacman pac) (integer count))
   (with-slots ((r radius) x y direction)
       pac
     (ecase direction
-      (:up (add-point count x (+ y r)))
-      (:down (add-point count x (- y r)))
-      (:left (add-point count (+ x r) y))
-      (:right (add-point count (- x r) y)))))
+      (:up (add-target count x (+ y r)))
+      (:down (add-target count x (- y r)))
+      (:left (add-target count (+ x r) y))
+      (:right (add-target count (- x r) y)))))
 
-(defun* pacman-eat-point-p ((point point))
+(defun* pacman-eat-target-p ((target target))
   (< (distance-* (pacman-x *pacman*) (pacman-y *pacman*)
-                 (point-x point) (point-y point))
-     (+ (pacman-radius *pacman*) *point-radius*)))
+                 (target-x target) (target-y target))
+     (+ (pacman-radius *pacman*) *target-radius*)))
 
 (defgeneric draw (pac)
   (:method ((pac pacman))
     (with-slots ((r radius) x y direction)
         pac
-      (let ((a (round (* 60 (abs (cos (* (/ *ticks* *fps*) 2 pi)))))))
+      (let ((a (round (* 60 (abs (cos (* (/ (game-clock-ticks *clock*)
+                                            *fps*) 2 pi)))))))
         (draw-filled-circle-* x y r :color *yellow* :stroke-color *background*)
         (ecase direction
           (:up
@@ -153,26 +219,28 @@
     (:sdl-key-f
      (decf (pacman-radius *pacman*)))
     (:sdl-key-x
-     (pacman-add-point *pacman* 5))
+     (pacman-add-target *pacman* 5))
     (:sdl-key-q
-     (incf *point-radius*))
+     (incf *target-radius*))
     (:sdl-key-w
-     (decf *point-radius*))
+     (decf *target-radius*))
     (:sdl-key-t
      (setf (pacman-x *pacman*) (/ *width* 2))
-     (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))))
+     (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))
+    (:sdl-key-c
+     (clock-toggle *clock*))))
 
-(defun update-points ()
-  (loop with new-points = nil
-        for point in *points*
+(defun update-targets ()
+  (loop with new-targets = nil
+        for target in *targets*
         do (cond
-             ((pacman-eat-point-p point)
+             ((pacman-eat-target-p target)
               (incf *score*))
              (t 
-              (draw-filled-circle-* (point-x point) (point-y point) 
-                                    *point-radius* :color *orange*)
-              (push point new-points)))
-        finally (setf *points* new-points)))
+              (draw-filled-circle-* (target-x target) (target-y target) 
+                                    *target-radius* :color *orange*)
+              (push target new-targets)))
+        finally (setf *targets* new-targets)))
              
 (defun update-state ()
   (with-surface (panel-surface (create-surface *width* 100))
@@ -184,10 +252,13 @@
                          10 60)
     (draw-string-solid-* (format nil ":: Score ~d ::" *score*) 
                          (/ *width* 2) 60 :justify :right)
+    (draw-string-solid-* (format-clock *clock*) 
+                         (/ *width* 2) 30 :justify :right)
     (blit-surface panel-surface *default-display*)))
 
 (defun update ()
-  (setf *ticks* (mod (1+ *ticks*) *fps*))
+  (clock-tick *clock*)
+  (clocks-tick)
   (clear-display *background* :surface *default-surface*)
   (draw *pacman*)
   (with-slots (x y direction radius)
@@ -207,7 +278,7 @@
          (unless (< (- *width* r) x)
            (incf x *speed*))))))
   (update-state)
-  (update-points)
+  (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red* 
                     :surface *default-display*)
   (update-display))
