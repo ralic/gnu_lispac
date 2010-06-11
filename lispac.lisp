@@ -320,11 +320,32 @@
                          (+ (* *tile-size* top) r)))
                       (- y *speed*))))
         (:down
-         (setf y (min (- *height* r) (+ y *speed*))))
+         (setf y (min (cond
+                        ((= bottom (1- *board-height*))
+                         (- (* *tile-size* *board-height*) r 1))
+                        ((board-row-clear-p (1+ bottom) left right)
+                         (- (* *tile-size* (+ bottom 2)) r 1))
+                        (t
+                         (- (* *tile-size* (1+ bottom)) r 1)))
+                      (+ y *speed*))))
         (:left
-         (setf x (max r (- x *speed*))))
+         (setf x (max (cond
+                        ((zerop left)
+                         r)
+                        ((board-column-clear-p (1- left) top bottom)
+                         (+ (* *tile-size* (1- left)) r))
+                        (t
+                         (+ (* *tile-size* left) r)))
+                      (- x *speed*))))
         (:right
-         (setf x (min (- *width* r) (+ x *speed*)))))))
+         (setf x (min (cond
+                        ((= right (1- *board-width*))
+                         (- (* *tile-size* *board-width*) r 1))
+                        ((board-column-clear-p (1+ right) top bottom)
+                         (- (* *tile-size* (+ right 2)) r 1))
+                        (t
+                         (- (* *tile-size* (1+ right)) r 1)))
+                      (+ x *speed*)))))))
   (draw *pacman*))
 
 (defun update ()
