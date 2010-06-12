@@ -302,50 +302,61 @@
           (top (floor (- y r) *tile-size*))
           (right (floor (+ x r) *tile-size*))
           (bottom (floor (+ y r) *tile-size*)))
-      (when *print-units-rectangles-p*
-        (let ((pacman-square (rectangle-from-edges-*
-                              (* *tile-size* left)
-                              (* *tile-size* top)
-                              (1- (* *tile-size* (1+ right)))
-                              (1- (* *tile-size* (1+ bottom))))))
-          (draw-rectangle pacman-square :color *white*)))
-      (case direction
-        (:up
-         (setf y (max (cond
-                        ((zerop top)
-                         r)
-                        ((board-row-clear-p (1- top) left right)
-                         (+ (* *tile-size* (1- top)) r))
-                        (t
-                         (+ (* *tile-size* top) r)))
-                      (- y *speed*))))
-        (:down
-         (setf y (min (cond
-                        ((= bottom (1- *board-height*))
-                         (- (* *tile-size* *board-height*) r 1))
-                        ((board-row-clear-p (1+ bottom) left right)
-                         (- (* *tile-size* (+ bottom 2)) r 1))
-                        (t
-                         (- (* *tile-size* (1+ bottom)) r 1)))
-                      (+ y *speed*))))
-        (:left
-         (setf x (max (cond
-                        ((zerop left)
-                         r)
-                        ((board-column-clear-p (1- left) top bottom)
-                         (+ (* *tile-size* (1- left)) r))
-                        (t
-                         (+ (* *tile-size* left) r)))
-                      (- x *speed*))))
-        (:right
-         (setf x (min (cond
-                        ((= right (1- *board-width*))
-                         (- (* *tile-size* *board-width*) r 1))
-                        ((board-column-clear-p (1+ right) top bottom)
-                         (- (* *tile-size* (+ right 2)) r 1))
-                        (t
-                         (- (* *tile-size* (1+ right)) r 1)))
-                      (+ x *speed*)))))))
+
+      (labels
+          ((move-up (pixels)
+             (setf y (max (cond
+                            ((zerop top)
+                             r)
+                            ((board-row-clear-p (1- top) left right)
+                             (+ (* *tile-size* (1- top)) r))
+                            (t
+                             (+ (* *tile-size* top) r)))
+                          (- y pixels))))
+           (move-down (pixels)
+             (setf y (min (cond
+                            ((= bottom (1- *board-height*))
+                             (- (* *tile-size* *board-height*) r 1))
+                            ((board-row-clear-p (1+ bottom) left right)
+                             (- (* *tile-size* (+ bottom 2)) r 1))
+                            (t
+                             (- (* *tile-size* (1+ bottom)) r 1)))
+                          (+ y pixels))))
+           (move-left (pixels)
+             (setf x (max (cond
+                            ((zerop left)
+                             r)
+                            ((board-column-clear-p (1- left) top bottom)
+                             (+ (* *tile-size* (1- left)) r))
+                            (t
+                             (+ (* *tile-size* left) r)))
+                          (- x pixels))))
+           (move-right (pixels)
+             (setf x (min (cond
+                            ((= right (1- *board-width*))
+                             (- (* *tile-size* *board-width*) r 1))
+                            ((board-column-clear-p (1+ right) top bottom)
+                             (- (* *tile-size* (+ right 2)) r 1))
+                            (t
+                             (- (* *tile-size* (1+ right)) r 1)))
+                          (+ x pixels))))
+           (move (pixels &optional (direction direction))
+             (case direction
+               (:up (move-up pixels))
+               (:down (move-down pixels))
+               (:left (move-left pixels))
+               (:right (move-right pixels)))))
+        (declare (inline move))
+
+        (when *print-units-rectangles-p*
+          (let ((pacman-square (rectangle-from-edges-*
+                                (* *tile-size* left)
+                                (* *tile-size* top)
+                                (1- (* *tile-size* (1+ right)))
+                                (1- (* *tile-size* (1+ bottom))))))
+            (draw-rectangle pacman-square :color *white*)))
+
+        (move *speed*))))
   (draw *pacman*))
 
 (defun update ()
