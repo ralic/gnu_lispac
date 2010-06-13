@@ -300,8 +300,8 @@
           ;; Tiles wich pacman use as a square
           (left (floor (- x r) *tile-size*))
           (top (floor (- y r) *tile-size*))
-          (right (floor (+ x r) *tile-size*))
-          (bottom (floor (+ y r) *tile-size*)))
+          (right (floor (+ x r -1) *tile-size*))
+          (bottom (floor (+ y r -1) *tile-size*)))
 
       (labels
           ((move-up (pixels)
@@ -318,9 +318,9 @@
                             ((= bottom (1- *board-height*))
                              (- (* *tile-size* *board-height*) r 1))
                             ((board-row-clear-p (1+ bottom) left right)
-                             (- (* *tile-size* (+ bottom 2)) r 1))
+                             (- (* *tile-size* (+ bottom 2)) r))
                             (t
-                             (- (* *tile-size* (1+ bottom)) r 1)))
+                             (- (* *tile-size* (1+ bottom)) r)))
                           (+ y pixels))))
            (move-left (pixels)
              (setf x (max (cond
@@ -336,9 +336,9 @@
                             ((= right (1- *board-width*))
                              (- (* *tile-size* *board-width*) r 1))
                             ((board-column-clear-p (1+ right) top bottom)
-                             (- (* *tile-size* (+ right 2)) r 1))
+                             (- (* *tile-size* (+ right 2)) r))
                             (t
-                             (- (* *tile-size* (1+ right)) r 1)))
+                             (- (* *tile-size* (1+ right)) r)))
                           (+ x pixels))))
            (move (pixels &optional (direction direction))
              (case direction
