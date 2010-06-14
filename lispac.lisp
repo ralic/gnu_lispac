@@ -53,6 +53,10 @@
     :type (member :up :down :left :right)
     :initform :right
     :accessor pacman-direction)
+   (next-direction
+    :type (member :up :down :left :right)
+    :initform :right
+    :accessor pacman-next-direction)
    (x
     :initarg :x
     :type fixnum
@@ -218,13 +222,13 @@
     (:sdl-key-escape
      (push-quit-event))
     (:sdl-key-up
-     (setf (pacman-direction *pacman*) :up))
+     (setf (pacman-next-direction *pacman*) :up))
     (:sdl-key-down
-     (setf (pacman-direction *pacman*) :down))
+     (setf (pacman-next-direction *pacman*) :down))
     (:sdl-key-left
-     (setf (pacman-direction *pacman*) :left))
+     (setf (pacman-next-direction *pacman*) :left))
     (:sdl-key-right
-     (setf (pacman-direction *pacman*) :right))
+     (setf (pacman-next-direction *pacman*) :right))
     (:sdl-key-f1
      (setf *background* *red*))
     (:sdl-key-f2
@@ -294,60 +298,82 @@
     (blit-surface panel-surface *default-display*)))
 
 (defun update-pacman ()
-  (with-slots (x y direction (r radius))
+  (with-slots (x y (r radius) direction next-direction)
       *pacman*
     (let (
           ;; Tiles wich pacman use as a square
           (left (floor (- x r) *tile-size*))
           (top (floor (- y r) *tile-size*))
           (right (floor (+ x r -1) *tile-size*))
-          (bottom (floor (+ y r -1) *tile-size*)))
+          (bottom (floor (+ y r -1) *tile-size*))
+
+          displacement)
 
       (labels
-          ((move-up (pixels)
-             (setf y (max (cond
-                            ((zerop top)
-                             r)
-                            ((board-row-clear-p (1- top) left right)
-                             (+ (* *tile-size* (1- top)) r))
-                            (t
-                             (+ (* *tile-size* top) r)))
-                          (- y pixels))))
+          (
+           ;; Try to move X pixels in the given direction, stop if
+           ;; pacman hits a wall or the board corners.
+           (move-up (pixels)
+             (setf displacement
+                   (- y
+                      (max (cond
+                             ((zerop top)
+                              r)
+                             ((board-row-clear-p (1- top) left right)
+                              (+ (* *tile-size* (1- top)) r))
+                             (t
+                              (+ (* *tile-size* top) r)))
+                           (- y pixels))))
+             (decf y displacement))
            (move-down (pixels)
-             (setf y (min (cond
-                            ((= bottom (1- *board-height*))
-                             (- (* *tile-size* *board-height*) r 1))
-                            ((board-row-clear-p (1+ bottom) left right)
-                             (- (* *tile-size* (+ bottom 2)) r))
-                            (t
-                             (- (* *tile-size* (1+ bottom)) r)))
-                          (+ y pixels))))
+             (setf displacement
+                   (- (min (cond
+                             ((= bottom (1- *board-height*))
+                              (- (* *tile-size* *board-height*) r 1))
+                             ((board-row-clear-p (1+ bottom) left right)
+                              (- (* *tile-size* (+ bottom 2)) r))
+                             (t
+                              (- (* *tile-size* (1+ bottom)) r)))
+                           (+ y pixels))
+                      y))
+             (incf y displacement))
            (move-left (pixels)
-             (setf x (max (cond
-                            ((zerop left)
-                             r)
-                            ((board-column-clear-p (1- left) top bottom)
-                             (+ (* *tile-size* (1- left)) r))
-                            (t
-                             (+ (* *tile-size* left) r)))
-                          (- x pixels))))
+             (setf displacement
+                   (- x
+                      (max (cond
+                             ((zerop left)
+                              r)
+                             ((board-column-clear-p (1- left) top bottom)
+                              (+ (* *tile-size* (1- left)) r))
+                             (t
+                              (+ (* *tile-size* left) r)))
+                           (- x pixels))))
+             (decf x displacement))
            (move-right (pixels)
-             (setf x (min (cond
-                            ((= right (1- *board-width*))
-                             (- (* *tile-size* *board-width*) r 1))
-                            ((board-column-clear-p (1+ right) top bottom)
-                             (- (* *tile-size* (+ right 2)) r))
-                            (t
-                             (- (* *tile-size* (1+ right)) r)))
-                          (+ x pixels))))
-           (move (pixels &optional (direction direction))
+             (setf displacement
+                   (- (min (cond
+                             ((= right (1- *board-width*))
+                              (- (* *tile-size* *board-width*) r 1))
+                             ((board-column-clear-p (1+ right) top bottom)
+                              (- (* *tile-size* (+ right 2)) r))
+                             (t
+                              (- (* *tile-size* (1+ right)) r)))
+                           (+ x pixels))
+                      x))
+             (incf x displacement))
+
+           ;; Move in the requested direction and return how much
+           ;; pixels pacman moved
+           (move (pixels direction)
              (case direction
                (:up (move-up pixels))
                (:down (move-down pixels))
                (:left (move-left pixels))
-               (:right (move-right pixels)))))
+               (:right (move-right pixels)))
+             displacement))
         (declare (inline move))
 
+        ;; Print pacman used tiles square if requested
         (when *print-units-rectangles-p*
           (let ((pacman-square (rectangle-from-edges-*
                                 (* *tile-size* left)
@@ -355,8 +381,12 @@
                                 (1- (* *tile-size* (1+ right)))
                                 (1- (* *tile-size* (1+ bottom))))))
             (draw-rectangle pacman-square :color *white*)))
-
-        (move *speed*))))
+        
+        ;; Do the actual pacman moves
+        (unless (zerop (move *speed* next-direction))
+          (setf direction next-direction))
+        (move (- *speed* displacement) direction))))
+  
   (draw *pacman*))
 
 (defun update ()
