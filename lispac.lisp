@@ -80,38 +80,45 @@
     :accessor pacman-speed)))
 
 (defclass target ()
-  ((count :type integer
-          :accessor target-count
-          :initform 0
-          :initarg :count)
-   (x :type fixnum
-      :accessor target-x
-      :initform 0
-      :initarg :x)
+  ((count
+    :type integer
+    :accessor target-count
+    :initform 0
+    :initarg :count)
+   (x
+    :type fixnum
+    :accessor target-x
+    :initform 0
+    :initarg :x)
    (y :type fixnum
       :accessor target-y
       :initform 0
       :initarg :y)))
 
 (defclass game-clock ()
-  ((ticks :type fixnum
-          :accessor game-clock-ticks
-          :initform 0
-          :initarg :t)
-   (seconds :type fixnum
-            :accessor game-clock-seconds
-            :initform 0
-            :initarg :s)
-   (minutes :type fixnum
-            :accessor game-clock-minutes
-            :initform 0
-            :initarg :m)
-   (hours :type fixnum
-          :accessor game-clock-hours
-          :initform 0
-          :initarg :h)
-   (stop :accessor game-clock-stop
-         :initform nil)))
+  ((ticks
+    :type fixnum
+    :accessor game-clock-ticks
+    :initform 0
+    :initarg :t)
+   (seconds
+    :type fixnum
+    :accessor game-clock-seconds
+    :initform 0
+    :initarg :s)
+   (minutes
+    :type fixnum
+    :accessor game-clock-minutes
+    :initform 0
+    :initarg :m)
+   (hours
+    :type fixnum
+    :accessor game-clock-hours
+    :initform 0
+    :initarg :h)
+   (stop
+    :accessor game-clock-stop
+    :initform nil)))
 
 ;;; The yellow ball :-)
 
@@ -188,21 +195,37 @@
   (with-slots ((r radius) x y direction)
       pacman
     (let ((a (round (* 60 (abs (cos (* (/ (game-clock-ticks *clock*)
-					  *fps*) 2 pi)))))))
+                                          *fps*) 2 pi)))))))
       (draw-filled-circle-* x y r :color *yellow* :stroke-color *background*)
       (ecase direction
-	(:up
-	 (sdl-gfx:draw-filled-pie-* x y r (- 270 (round a 2)) (+ 270 (round a 2)) :color *background*)
-	 (draw-filled-circle-* (- x (round r 2)) y (round r 5) :color *black*))
-	(:down
-	 (sdl-gfx:draw-filled-pie-* x y r (- 90 (round a 2)) (+ 90 (round a 2)) :color *background*)
-	 (draw-filled-circle-* (- x (round r 2)) y (round r 5) :color *black*))
-	(:left
-	 (sdl-gfx:draw-filled-pie-* x y r (- 180 (round a 2)) (- (round a 2) 180) :color *background*)
-	 (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*))
-	(:right
-	 (sdl-gfx:draw-filled-pie-* x y r (- 360 (round a 2)) (round a 2) :color *background*)
-	 (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*))))))
+        (:up
+         (sdl-gfx:draw-filled-pie-* x y r
+                                    (- 270 (round a 2))
+                                    (+ 270 (round a 2))
+                                    :color *background*)
+         (draw-filled-circle-* (- x (round r 2)) y (round r 5)
+                               :color *black*))
+        (:down
+         (sdl-gfx:draw-filled-pie-* x y r
+                                    (- 90 (round a 2))
+                                    (+ 90 (round a 2))
+                                    :color *background*)
+         (draw-filled-circle-* (- x (round r 2)) y (round r 5)
+                               :color *black*))
+        (:left
+         (sdl-gfx:draw-filled-pie-* x y r
+                                    (- 180 (round a 2))
+                                    (- (round a 2) 180)
+                                    :color *background*)
+         (draw-filled-circle-* x (- y (round r 2)) (round r 5)
+                               :color *black*))
+        (:right
+         (sdl-gfx:draw-filled-pie-* x y r
+                                    (- 360 (round a 2))
+                                    (round a 2)
+                                    :color *background*)
+         (draw-filled-circle-* x (- y (round r 2)) (round r 5)
+                               :color *black*))))))
 
 (defun generate-dumb-board ()
   (dotimes (x *board-width*)
@@ -395,29 +418,31 @@
         ;;
         ;; TODO: Document it!
         (if (zerop (move speed next-direction))
-	    (progn
-	      (let* ((pixels-to-next-tile
-		      (ecase direction
-			(:up
-			 (- y (if (> (+ r y) (* *tile-size* (1+ top)))
-				  (- (* *tile-size* (1+ top)) r)
-				  (- (* *tile-size* top) r))))
-			(:down
-			 (- (if (< (- y r) (* *tile-size* bottom))
-				(+ r (* *tile-size* bottom))
-				(+ r (* *tile-size* (1+ bottom))))
-			    y))
-			(:left
-			 (- x (if (> (+ r x) (* *tile-size* (1+ left)))
-				  (- (* *tile-size* (1+ left)) r)
-				  (- (* *tile-size* left) r))))
-			(:right
-			 (- (if (< (- x r) (* *tile-size* right))
-				(+ r (* *tile-size* right))
-				(+ r (* *tile-size* (1+ right))))
-			    x)))))
-		(move (min speed pixels-to-next-tile) direction)))
-	    (setf direction next-direction)))))
+            (progn
+              (let* ((pixels-to-next-tile
+                      (ecase direction
+                        (:up
+                         (- y
+                            (if (> (+ r y) (* *tile-size* (1+ top)))
+                                (- (* *tile-size* (1+ top)) r)
+                                (- (* *tile-size* top) r))))
+                        (:down
+                         (- (if (< (- y r) (* *tile-size* bottom))
+                                (+ r (* *tile-size* bottom))
+                                (+ r (* *tile-size* (1+ bottom))))
+                            y))
+                        (:left
+                         (- x
+                            (if (> (+ r x) (* *tile-size* (1+ left)))
+                                (- (* *tile-size* (1+ left)) r)
+                                (- (* *tile-size* left) r))))
+                        (:right
+                         (- (if (< (- x r) (* *tile-size* right))
+                                (+ r (* *tile-size* right))
+                                (+ r (* *tile-size* (1+ right))))
+                            x)))))
+                (move (min speed pixels-to-next-tile) direction)))
+            (setf direction next-direction)))))
 
   (draw *pacman*))
 
@@ -445,7 +470,8 @@
       (setf *board* (make-array (list *board-width* *board-height*)
                                 :element-type '(member t nil)))
       (generate-dumb-board)
-      (with-surface (*default-surface* (create-surface *width* *height* :y 100))
+      (with-surface
+          (*default-surface* (create-surface *width* *height* :y 100))
         (setf *board-surface* (create-surface *width* *height*))
         (update-board)
         (with-events ()
