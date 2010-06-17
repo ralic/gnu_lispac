@@ -43,6 +43,8 @@
 ;; If non-nil, print the tiles the units uses.
 (defvar *print-units-rectangles-p* nil)
 
+(defgeneric draw (unit))
+
 (defclass pacman ()
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
    ;; to rotation and more.
@@ -178,26 +180,29 @@
                  (target-x target) (target-y target))
      (+ (pacman-radius *pacman*) *target-radius*)))
 
-(defgeneric draw (pac)
-  (:method ((pac pacman))
-    (with-slots ((r radius) x y direction)
-        pac
-      (let ((a (round (* 60 (abs (cos (* (/ (game-clock-ticks *clock*)
-                                            *fps*) 2 pi)))))))
-        (draw-filled-circle-* x y r :color *yellow* :stroke-color *background*)
-        (ecase direction
-          (:up
-           (sdl-gfx:draw-filled-pie-* x y r (- 270 (round a 2)) (+ 270 (round a 2)) :color *background*)
-           (draw-filled-circle-* (- x (round r 2)) y (round r 5) :color *black*))
-          (:down
-           (sdl-gfx:draw-filled-pie-* x y r (- 90 (round a 2)) (+ 90 (round a 2)) :color *background*)
-           (draw-filled-circle-* (- x (round r 2)) y (round r 5) :color *black*))
-          (:left
-           (sdl-gfx:draw-filled-pie-* x y r (- 180 (round a 2)) (- (round a 2) 180) :color *background*)
-           (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*))
-          (:right
-           (sdl-gfx:draw-filled-pie-* x y r (- 360 (round a 2)) (round a 2) :color *background*)
-           (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*)))))))
+(defmethod draw ((target target))
+  (with-slots (x y) target
+    (draw-filled-circle-* x y *target-radius* :color *orange*)))
+
+(defmethod draw ((pacman pacman))
+  (with-slots ((r radius) x y direction)
+      pacman
+    (let ((a (round (* 60 (abs (cos (* (/ (game-clock-ticks *clock*)
+					  *fps*) 2 pi)))))))
+      (draw-filled-circle-* x y r :color *yellow* :stroke-color *background*)
+      (ecase direction
+	(:up
+	 (sdl-gfx:draw-filled-pie-* x y r (- 270 (round a 2)) (+ 270 (round a 2)) :color *background*)
+	 (draw-filled-circle-* (- x (round r 2)) y (round r 5) :color *black*))
+	(:down
+	 (sdl-gfx:draw-filled-pie-* x y r (- 90 (round a 2)) (+ 90 (round a 2)) :color *background*)
+	 (draw-filled-circle-* (- x (round r 2)) y (round r 5) :color *black*))
+	(:left
+	 (sdl-gfx:draw-filled-pie-* x y r (- 180 (round a 2)) (- (round a 2) 180) :color *background*)
+	 (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*))
+	(:right
+	 (sdl-gfx:draw-filled-pie-* x y r (- 360 (round a 2)) (round a 2) :color *background*)
+	 (draw-filled-circle-* x (- y (round r 2)) (round r 5) :color *black*))))))
 
 (defun generate-dumb-board ()
   (dotimes (x *board-width*)
@@ -282,8 +287,7 @@
              ((pacman-eat-target-p target)
               (incf *score*))
              (t
-              (draw-filled-circle-* (target-x target) (target-y target)
-                                    *target-radius* :color *orange*)
+              (draw target)
               (push target new-targets)))
         finally (setf *targets* new-targets)))
 
