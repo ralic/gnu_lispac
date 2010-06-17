@@ -34,7 +34,6 @@
 
 ;;; Time handling
 (defvar *fps* 60)
-(defvar *speed* 2)
 (defvar *score* 0)
 (defvar *orange* (color :r 255 :g 127 :b 0))
 ;;; Background color
@@ -71,7 +70,12 @@
     :initarg :radius
     :type fixnum
     :initform 12
-    :accessor pacman-radius)))
+    :accessor pacman-radius)
+   (speed
+    :initarg :speed
+    :type fixnum
+    :initform 2
+    :accessor pacman-speed)))
 
 (defclass target ()
   ((count :type integer
@@ -242,9 +246,9 @@
     (:sdl-key-f6
      (setf *background* *yellow*))
     (:sdl-key-a
-     (incf *speed*))
+     (incf (pacman-speed *pacman*)))
     (:sdl-key-s
-     (decf *speed*))
+     (decf (pacman-speed *pacman*)))
     (:sdl-key-d
      (incf (pacman-radius *pacman*)))
     (:sdl-key-f
@@ -287,7 +291,8 @@
   (with-surface (panel-surface (create-surface *width* 100))
     (fill-surface *black*)
     (draw-string-solid-* "Lispac" 10 10)
-    (draw-string-solid-* (format nil "FPS ~d Speed ~d" (frame-rate) *speed*)
+    (draw-string-solid-*
+     (format nil "FPS ~d Speed ~d" (frame-rate) (pacman-speed *pacman*))
                          10 35)
     (draw-string-solid-* (format nil "Radius ~d" (pacman-radius *pacman*))
                          10 60)
@@ -298,7 +303,7 @@
     (blit-surface panel-surface *default-display*)))
 
 (defun update-pacman ()
-  (with-slots (x y (r radius) direction next-direction)
+  (with-slots (x y (r radius) speed direction next-direction)
       *pacman*
     (let (
           ;; Tiles wich pacman use as a square
@@ -385,7 +390,7 @@
         ;; Do the actual pacman moves
         ;;
         ;; TODO: Document it!
-        (if (zerop (move *speed* next-direction))
+        (if (zerop (move speed next-direction))
 	    (progn
 	      (let* ((pixels-to-next-tile
 		      (ecase direction
@@ -407,7 +412,7 @@
 				(+ r (* *tile-size* right))
 				(+ r (* *tile-size* (1+ right))))
 			    x)))))
-		(move (min *speed* pixels-to-next-tile) direction)))
+		(move (min speed pixels-to-next-tile) direction)))
 	    (setf direction next-direction)))))
 
   (draw *pacman*))
