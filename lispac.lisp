@@ -381,12 +381,35 @@
                                 (1- (* *tile-size* (1+ right)))
                                 (1- (* *tile-size* (1+ bottom))))))
             (draw-rectangle pacman-square :color *white*)))
-        
+
         ;; Do the actual pacman moves
-        (unless (zerop (move *speed* next-direction))
-          (setf direction next-direction))
-        (move (- *speed* displacement) direction))))
-  
+        ;;
+        ;; TODO: Document it!
+        (if (zerop (move *speed* next-direction))
+	    (progn
+	      (let* ((pixels-to-next-tile
+		      (ecase direction
+			(:up
+			 (- y (if (> (+ r y) (* *tile-size* (1+ top)))
+				  (- (* *tile-size* (1+ top)) r)
+				  (- (* *tile-size* top) r))))
+			(:down
+			 (- (if (< (- y r) (* *tile-size* bottom))
+				(+ r (* *tile-size* bottom))
+				(+ r (* *tile-size* (1+ bottom))))
+			    y))
+			(:left
+			 (- x (if (> (+ r x) (* *tile-size* (1+ left)))
+				  (- (* *tile-size* (1+ left)) r)
+				  (- (* *tile-size* left) r))))
+			(:right
+			 (- (if (< (- x r) (* *tile-size* right))
+				(+ r (* *tile-size* right))
+				(+ r (* *tile-size* (1+ right))))
+			    x)))))
+		(move (min *speed* pixels-to-next-tile) direction)))
+	    (setf direction next-direction)))))
+
   (draw *pacman*))
 
 (defun update ()
