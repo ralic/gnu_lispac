@@ -26,11 +26,18 @@
 
 ;;; Misc
 
+;;; Generate variable names based on `gensym'
 (defmacro with-gensyms ((&rest vars) &body code)
-  `(let ,(loop for i in vars
-	       collect (etypecase i
-			 (symbol `(,i (gensym ,(symbol-name i))))
-			 (list `(,(first i) (gensym ,(second i))))))
+  `(let ,(loop for var in vars
+               collect (etypecase var
+                         (symbol
+                          `(,var (gensym ,(symbol-name var))))
+                         (list
+                          (let* ((name (first var))
+                                 (value (second var))
+                                 (hint (or (third var)
+                                           (symbol-name (first var)))))
+                            `(,name (or ,value (gensym ,hint)))))))
      ,@code))
 
 (defmacro with-collecting (&body code)
@@ -50,6 +57,36 @@
 (defun divisiblep (m n)
   (declare (integer m n))
   (zerop (mod m n)))
+
+(defun read-bytes (stream n)
+  (declare (fixnum n))
+  (let ((buffer (make-array n)))
+    (dotimes (i n)
+      (setf (elt buffer i) (read-byte stream)))))
+
+(defun parse-unsigned-integer (string)
+  (loop with result = 0
+        for i = 0 then (1+ i)
+        while (/= i (length string))
+        for char = (elt string i)
+        for weight = (digit-char-p char)
+        do (if weight
+               (setf result (+ weight (* result 10)))
+               (error "Found a non-digit: ~a" char))
+        finally (return result)))
+
+;;; Read a single byte and compare againsing the given value, return t
+;;; if and only if they do *not* match.
+(defun read-and-compare (stream value &optional (test #'eql))
+  (not (funcall test value (read-byte stream))))
+
+;;; Read from a binary stream and compare againsing a sequence of
+;;; integers.  Return the index of the first non matching item if any
+;;; or nil otherwise.
+(defun read-and-compare-sequence (stream sequence &optional (test #'eql))
+  (dotimes (i (length sequence))
+    (unless (funcall test (elt sequence i) (read-byte stream))
+      (return i))))
 
 
 ;;; Definitions & declarations
@@ -101,5 +138,102 @@
 (defmacro nilf (&rest places)
   `(multiple-setf nil ,@places))
 
+
+;;; Portable bit map parser
+
+;; ASCII for "P6"
+(defconst +pbm-magic-number+ #(80 52))
+
+(defun pnm-whitespace-p (byte)
+  (declare ((unsigned-byte 8) byte))
+  (or (= byte #x20)                     ; SP
+      (= byte #x9)                      ; TAB
+      (= byte #xA)                      ; LF
+      (= byte #xD)                      ; CR
+      ))
+
+(defun read-pbm-header (stream)
+  (flet ((read-token ()
+           (with-output-to-string (result)
+             (loop with comment-p = nil
+                   for count = 0 then (1+ count)
+                   for byte = (read-byte stream)
+                   for char = (code-char byte)
+                   do (cond
+                        (comment-p
+                         (if (or (char= #\newline char)
+                                 (char= #\return char))
+                             (setf comment-p nil)))
+
+                        ((= byte 35)
+                         (setf comment-p t))
+
+                        ((pnm-whitespace-p byte)
+                         (return))
+
+                        (t
+                         (write-char char result)))))))
+
+    (unless (string= "P4" (read-token))
+      (error "Magic number don't match"))
+
+    (vector (parse-unsigned-integer (read-token))
+            (parse-unsigned-integer (read-token)))))
+
+;;; Read and iterate through the pixels of a portable bit map
+
+;;; `pixel' (Non evaluated) is bound to the value of each individual
+;;; pixel (1 for black).
+
+;;; `byte' (Non evaluated) when giventh is bound to the byte where
+;;; `pixel' is packed (8 pixels per byte, left to right, MSB to LSB).
+
+;;; `dimensions' (Evaluated) is a #(width height).
+
+;;; `x' and `y' (Non evaluated) when giventh are boud to the location
+;;; of the current `pixel'.
+
+;;; `at-row-end' forms, (Non evaluated) when giventh are evaluated
+;;; after reading a whole row.
+
+;;; `stream' (Evaluated) is the byte-stream to read the image from.
+;;; Should be open before calling do-pbm-pixels and will remain open
+;;; after calling do-pbm-pixels.
+
+;;; `body' form (Non evaluated) are evaluated with `pixel',
+;;; `byte'. `x' and `y' bound to their respective values, if
+;;; requested.
+(defmacro do-pbm-pixels ((pixel &optional byte)
+                         (dimensions &optional x y &body at-row-end)
+                         stream &body body)
+  (with-gensyms ((byte byte)
+                 (x x)
+                 (y y)
+                 dimensions-tmp
+                 width
+                 height)
+    `(let* ((,dimensions-tmp ,dimensions)
+            (,width  (elt ,dimensions-tmp 0))
+            (,height (elt ,dimensions-tmp 1)))
+       (dotimes (,y ,height)
+         (let ((,byte 0))
+           (declare ((unsigned-byte 8) ,byte))
+           (dotimes (,x ,width)
+             (when (divisiblep ,x 8)
+               (setf ,byte (read-byte ,stream)))
+             (let ((,pixel (logand 1 (ash ,byte (- (mod ,x 8) 8)))))
+               (declare (bit ,pixel))
+               ,@body)))
+         ,@at-row-end))))
+
+;;; Read a complete pixel
+(defun read-and-print-pbm (stream)
+  (do-pbm-pixels
+      (pix byte)
+      ((read-pbm-header stream) x y (write-line ""))
+      stream
+    (case pix
+      (0 (write-char #\space))
+      (1 (write-char #\#)))))
 
 ;;; utils.lisp ends here
