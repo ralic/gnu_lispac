@@ -26,11 +26,13 @@
 ;;; Board
 (defvar *width*  600)
 (defvar *height* 400)
-(defvar *board*)
-(defvar *board-width*)
-(defvar *board-height*)
-(defvar *board-surface*)
 (defvar *tile-size* 12)
+(defvar *board-width* (floor (/ *width* *tile-size*)))
+(defvar *board-height* (floor (/ *height* *tile-size*)))
+(defvar *board* (make-array (list *board-width* *board-height*)
+                            :element-type '(member t nil)
+                            :initial-element nil))
+(defvar *board-surface*)
 
 ;;; Time handling
 (defvar *fps* 60)
@@ -232,6 +234,28 @@
     (dotimes (y *board-height*)
       (setf (aref *board* x y) (and (divisiblep x 4)
                                     (divisiblep y 4))))))
+
+;;; Load the board from a portable bit map.
+
+;;; 0 = way, 1 = wall.
+(defun load-board-from-pbm (stream)
+  (let* ((dimensions (read-pbm-header stream))
+         (width (elt dimensions 0))
+         (height (elt dimensions 1)))
+    (setf *board-width* width)
+    (setf *board-height* height)
+    (setf *board* (make-array (list width height)
+                              :element-type '(member t nil)))
+    (do-pbm-pixels
+        (pixel)
+        (dimensions x y)
+        stream
+      (setf (aref *board* x y)
+            (= 1 pixel)))))
+
+(defun load-board-from-pbm-file (file)
+  (with-open-file (s file :element-type '(unsigned-byte 8))
+    (load-board-from-pbm s)))
 
 (defun board-square-clear-p (left top right bottom)
   (block function
@@ -458,6 +482,9 @@
   (update-display))
 
 ;;; Run pacman
+
+;;; Use `generate-dumb-board' or `load-board-from-pbm-file' to load a
+;;; non-trivial-map.  The default one contains no walls at all.
 (defun run-and-wait ()
   (with-init (sdl-init-video)
     (let ((screen (window *width* (+ *height* 100) :title-caption "Lispac")))
@@ -465,11 +492,6 @@
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
       (setf *pacman* (make-instance 'pacman))
-      (setf *board-width* (floor (/ *width* *tile-size*)))
-      (setf *board-height* (floor (/ *height* *tile-size*)))
-      (setf *board* (make-array (list *board-width* *board-height*)
-                                :element-type '(member t nil)))
-      (generate-dumb-board)
       (with-surface
           (*default-surface* (create-surface *width* *height* :y 100))
         (setf *board-surface* (create-surface *width* *height*))
