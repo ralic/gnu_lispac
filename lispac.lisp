@@ -427,7 +427,7 @@
              (setf displacement
                    (- (min (cond
                              ((= bottom (1- board-height))
-                              (- (* tile-size board-height) r 1))
+                              (- (* tile-size board-height) r))
                              ((board-row-clear-p (1+ bottom) left right)
                               (- (* tile-size (+ bottom 2)) r))
                              (t
@@ -451,7 +451,7 @@
              (setf displacement
                    (- (min (cond
                              ((= right (1- board-width))
-                              (- (* tile-size board-width) r 1))
+                              (- (* tile-size board-width) r))
                              ((board-column-clear-p (1+ right) top bottom)
                               (- (* tile-size (+ right 2)) r))
                              (t
