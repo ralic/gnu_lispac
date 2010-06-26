@@ -21,27 +21,37 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
+
+;;; Code:
+
 (in-package :lispac)
 
-;;; Board
-(defvar *width*  600)
-(defvar *height* 400)
-(defvar *tile-size* 12)
-(defvar *board*)
-(defvar *board-surface*)
+;;; Game settings
 
-;;; Time handling
 (defvar *fps* 60)
 (defvar *score* 0)
-(defvar *orange* (color :r 255 :g 127 :b 0))
-;;; Background color
 (defvar *background* *black*)
 (defvar *target-radius* 2)
+
+;; Width & height of the frame in pixels
+(defvar *width*  600)
+(defvar *height* 400)
+
+;; Board stored as a board object.
+(defvar *board*)
 
 ;; If non-nil, print the tiles the units uses.
 (defvar *print-units-rectangles-p* nil)
 
+(defvar *pacman*)                       ; The yellow ball :-)
+(defvar *targets* ())
+
+;; Hmm... do draw & *orange* belong to this section? - MXCC
 (defgeneric draw (unit))
+
+(defvar *orange* (color :r 255 :g 127 :b 0))
+
+;;; Board
 
 (defclass board ()
   ((tile-size
@@ -56,55 +66,76 @@
     :type surface
     :accessor board-surface)))
 
-(defclass pacman ()
-  (;; TODO: Implement pacman upon a surface, in order to we can use GFX
-   ;; to rotation and more.
-   ;; (surface ...)
-   (direction
-    :initarg :direction
-    :type (member :up :down :left :right)
-    :initform :right
-    :accessor pacman-direction)
-   (next-direction
-    :type (member :up :down :left :right)
-    :initform :right
-    :accessor pacman-next-direction)
-   (x
-    :initarg :x
-    :type fixnum
-    :initform (round *width* 2)
-    :accessor pacman-x)
-   (y
-    :initarg :y
-    :type fixnum
-    :initform (round *height* 2)
-    :accessor pacman-y)
-   (radius
-    :initarg :radius
-    :type fixnum
-    :initform 12
-    :accessor pacman-radius)
-   (speed
-    :initarg :speed
-    :type fixnum
-    :initform 2
-    :accessor pacman-speed)))
+(defun make-board (tile-size width height &optional tile)
+  (make-instance 'board
+                 :tile-size tile-size
+                 :tiles (make-array (list width height)
+                                    :element-type '(member t nil)
+                                    :initial-element tile)))
 
-(defclass target ()
-  ((count
-    :type integer
-    :accessor target-count
-    :initform 0
-    :initarg :count)
-   (x
-    :type fixnum
-    :accessor target-x
-    :initform 0
-    :initarg :x)
-   (y :type fixnum
-      :accessor target-y
-      :initform 0
-      :initarg :y)))
+(defun tile (board x y)
+  (declare (board board)
+           (fixnum x y))
+  (aref (board-tiles board) x y))
+
+(defun set-tile (board x y value)
+  (setf (aref (board-tiles board) x y) value))
+
+(defsetf tile set-tile)
+
+(defun board-width (board)
+  (declare (board board))
+  (array-dimension (board-tiles board) 0))
+
+(defun board-height (board)
+  (declare (board board))
+  (array-dimension (board-tiles board) 1))
+
+(defun generate-dumb-board (tile-size width height)
+  (let ((board (make-board tile-size width height)))
+    (dotimes (x width)
+      (dotimes (y height)
+        (setf (tile board x y)
+              (and (divisiblep x 4)
+                   (divisiblep y 4)))))
+    board))
+
+;; Load the board from a portable bit map.
+
+;; 0 = way, 1 = wall.
+(defun load-board-from-pbm (stream tile-size)
+  (let* ((dimensions (read-pbm-header stream))
+         (width (elt dimensions 0))
+         (height (elt dimensions 1))
+         (board (make-board tile-size width height)))
+    (do-pbm-pixels
+        (pixel)
+        (dimensions x y)
+        stream
+      (setf (tile board x y) (= 1 pixel)))
+    board))
+
+(defun load-board-from-pbm-file (file tile-size)
+  (with-open-file (s file :element-type '(unsigned-byte 8))
+    (load-board-from-pbm s tile-size)))
+
+(defun board-square-clear-p (left top right bottom)
+  (block function
+    (dorange (x left right)
+      (dorange (y top bottom)
+        (when (tile *board* x y)
+          (return-from function nil))))
+    t))
+
+(defun board-row-clear-p (y &optional left right)
+  (board-square-clear-p (or left 0) y
+                        (or right (1- (board-width *board*))) y))
+
+(defun board-column-clear-p (x &optional top bottom)
+  (board-square-clear-p x (or top 0)
+                        x (or bottom (1- (board-height *board*)))))
+
+;;; Clock
 
 (defclass game-clock ()
   ((ticks
@@ -131,10 +162,6 @@
     :accessor game-clock-stop
     :initform nil)))
 
-;;; The yellow ball :-)
-
-(defvar *pacman*)
-(defvar *targets* ())
 (defvar *clock* (make-instance 'game-clock))
 (defvar *user-clocks* (make-hash-table))
 
@@ -172,9 +199,6 @@
       clock
   (format nil "~d:~d:~d - ~d" hours minutes seconds ticks)))
 
-(defun* add-target ((integer count x y))
-  (push (make-instance 'target :count count :x x :y y) *targets*))
-
 (defmacro with-timer ((name var func) &body body)
   (add-clock name)
   `(let ((,var ,(get-clock name)))
@@ -183,6 +207,27 @@
      (with-slots (ticks seconds minutes hours)
          ,var
        ,@body)))
+
+;;; Targets
+
+(defclass target ()
+  ((count
+    :type integer
+    :accessor target-count
+    :initform 0
+    :initarg :count)
+   (x
+    :type fixnum
+    :accessor target-x
+    :initform 0
+    :initarg :x)
+   (y :type fixnum
+      :accessor target-y
+      :initform 0
+      :initarg :y)))
+
+(defun* add-target ((integer count x y))
+  (push (make-instance 'target :count count :x x :y y) *targets*))
 
 (defun* pacman-add-target ((pacman pac) (integer count))
   (with-slots ((r radius) x y direction)
@@ -201,6 +246,42 @@
 (defmethod draw ((target target))
   (with-slots (x y) target
     (draw-filled-circle-* x y *target-radius* :color *orange*)))
+
+;;; Units
+
+(defclass pacman ()
+  (;; TODO: Implement pacman upon a surface, in order to we can use GFX
+   ;; to rotation and more.
+   ;; (surface ...)
+   (direction
+    :initarg :direction
+    :type (member :up :down :left :right)
+    :initform :right
+    :accessor pacman-direction)
+   (next-direction
+    :type (member :up :down :left :right)
+    :initform :right
+    :accessor pacman-next-direction)
+   (x
+    :initarg :x
+    :type fixnum
+    :initform (round *width* 2)
+    :accessor pacman-x)
+   (y
+    :initarg :y
+    :type fixnum
+    :initform (round *height* 2)
+    :accessor pacman-y)
+   (radius
+    :initarg :radius
+    :type fixnum
+    :initform 12
+    :accessor pacman-radius)
+   (speed
+    :initarg :speed
+    :type fixnum
+    :initform 2
+    :accessor pacman-speed)))
 
 (defmethod draw ((pacman pacman))
   (with-slots ((r radius) x y direction)
@@ -238,74 +319,7 @@
          (draw-filled-circle-* x (- y (round r 2)) (round r 5)
                                :color *black*))))))
 
-(defun make-board (tile-size width height &optional tile)
-  (make-instance 'board
-                 :tile-size tile-size
-                 :tiles (make-array (list width height)
-                                    :element-type '(member t nil)
-                                    :initial-element tile)))
-
-(defun tile (board x y)
-  (declare (board board)
-           (fixnum x y))
-  (aref (board-tiles board) x y))
-
-(defun set-tile (board x y value)
-  (setf (aref (board-tiles board) x y) value))
-
-(defsetf tile set-tile)
-
-(defun board-width (board)
-  (declare (board board))
-  (array-dimension (board-tiles board) 0))
-
-(defun board-height (board)
-  (declare (board board))
-  (array-dimension (board-tiles board) 1))
-
-(defun generate-dumb-board (tile-size width height)
-  (let ((board (make-board tile-size width height)))
-    (dotimes (x width)
-      (dotimes (y height)
-        (setf (tile board x y)
-              (and (divisiblep x 4)
-                   (divisiblep y 4)))))
-    board))
-
-;;; Load the board from a portable bit map.
-
-;;; 0 = way, 1 = wall.
-(defun load-board-from-pbm (stream tile-size)
-  (let* ((dimensions (read-pbm-header stream))
-         (width (elt dimensions 0))
-         (height (elt dimensions 1))
-         (board (make-board tile-size width height)))
-    (do-pbm-pixels
-        (pixel)
-        (dimensions x y)
-        stream
-      (setf (tile board x y) (= 1 pixel)))
-    board))
-
-(defun load-board-from-pbm-file (file tile-size)
-  (with-open-file (s file :element-type '(unsigned-byte 8))
-    (load-board-from-pbm s tile-size)))
-
-(defun board-square-clear-p (left top right bottom)
-  (block function
-    (dorange (x left right)
-      (dorange (y top bottom)
-        (when (tile *board* x y)
-          (return-from function nil))))
-    t))
-
-(defun board-row-clear-p (y &optional left right)
-  (board-square-clear-p (or left 0) y
-                        (or right (1- (board-width *board*))) y))
-
-(defun board-column-clear-p (x &optional top bottom)
-  (board-square-clear-p x (or top 0)
-                        x (or bottom (1- (board-height *board*)))))
+;;; Game loop
 
 (defun keypress (key)
   (case key
@@ -523,10 +537,10 @@
                     :surface *default-display*)
   (update-display))
 
-;;; Run pacman
+;;;; Run pacman
 
-;;; Use `generate-dumb-board' or `load-board-from-pbm-file' to load a
-;;; non-trivial-map.  The default one contains no walls at all.
+;; Use `generate-dumb-board' or `load-board-from-pbm-file' to load a
+;; non-trivial-map.  The default one contains no walls at all.
 (defun run-and-wait ()
   (with-init (sdl-init-video)
     (let ((screen (window *width* (+ *height* 100) :title-caption "Lispac")))
@@ -536,7 +550,6 @@
       (setf *pacman* (make-instance 'pacman))
       (with-surface
           (*default-surface* (create-surface *width* *height* :y 100))
-        (setf *board-surface* (create-surface *width* *height*))
         (update-board)
         (with-events ()
           (:quit-event () t)
@@ -545,9 +558,15 @@
                  (update)
                  (blit-surface *default-surface* screen)))))))
 
+;; Non-locking run (Run in another thread, if SBCL threads are available).
 (defun run ()
   #+sb-thread (sb-thread:make-thread #'run-and-wait)
   #-sb-thread (run-and-wait)
   (values))
+
+;; Local Variables:
+;; indent-tabs-mode: nil
+;; coding: us-ascii-unix
+;; End:
 
 ;;; lispac.lisp ends here
