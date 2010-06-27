@@ -239,9 +239,9 @@
       (:right (add-target count (- x r) y)))))
 
 (defun* pacman-eat-target-p ((target target))
-  (< (distance-* (pacman-x *pacman*) (pacman-y *pacman*)
+  (< (distance-* (unit-x *pacman*) (unit-y *pacman*)
                  (target-x target) (target-y target))
-     (+ (pacman-radius *pacman*) *target-radius*)))
+     (+ (unit-radius *pacman*) *target-radius*)))
 
 (defmethod draw ((target target))
   (with-slots (x y) target
@@ -249,7 +249,29 @@
 
 ;;; Units
 
-(defclass pacman ()
+(defclass unit ()
+  ((x
+    :initarg :x
+    :type fixnum
+    :initform (round *width* 2)
+    :accessor unit-x)
+   (y
+    :initarg :y
+    :type fixnum
+    :initform (round *height* 2)
+    :accessor unit-y)
+   (radius
+    :initarg :radius
+    :type fixnum
+    :initform 12
+    :accessor unit-radius)
+   (speed
+    :initarg :speed
+    :type fixnum
+    :initform 2
+    :accessor unit-speed)))
+
+(defclass pacman (unit)
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
    ;; to rotation and more.
    ;; (surface ...)
@@ -261,27 +283,76 @@
    (next-direction
     :type (member :up :down :left :right)
     :initform :right
-    :accessor pacman-next-direction)
-   (x
-    :initarg :x
-    :type fixnum
-    :initform (round *width* 2)
-    :accessor pacman-x)
-   (y
-    :initarg :y
-    :type fixnum
-    :initform (round *height* 2)
-    :accessor pacman-y)
-   (radius
-    :initarg :radius
-    :type fixnum
-    :initform 12
-    :accessor pacman-radius)
-   (speed
-    :initarg :speed
-    :type fixnum
-    :initform 2
-    :accessor pacman-speed)))
+    :accessor pacman-next-direction)))
+
+;; Tiles wich pacman use as a square
+(defmacro with-unit-boundary ((unit tile-size &optional prefix) &body body)
+  (flet ((intern* (name)
+           (if prefix
+               (intern (concatenate 'string prefix name))
+               (intern name))))
+    (let ((left (intern* "LEFT"))
+          (top (intern* "TOP"))
+          (right (intern* "RIGHT"))
+          (bottom (intern* "BOTTOM")))
+      (with-gensyms (tile-size-tmp)
+        `(with-slots (x y radius) ,unit
+           (let* ((,tile-size-tmp ,tile-size)
+                  (,left (floor (- x r) ,tile-size-tmp))
+                  (,top (floor (- y r) ,tile-size-tmp))
+                  (,right (floor (+ x r -1) ,tile-size-tmp))
+                  (,bottom (floor (+ y r -1) ,tile-size-tmp)))
+             ,@body))))))
+
+;; Move in the requested direction and return how much
+;; pixels the unit  moved
+
+;; Note: We can't corretly move more than one tile.
+(defmethod move-unit ((unit unit) pixels direction)
+  (declare ;; (direction direction) and define direction type - MXCC
+           (fixnum pixels))
+  (let ((board-width (board-width *board*))
+        (board-height (board-height *board*))
+        (tile-size (board-tile-size *board*)))
+    (with-slots (x y (r radius)) unit
+      (with-unit-boundary (unit tile-size)
+        (case direction
+          (:up
+           (decf* y (min pixels (- y
+                                   (cond
+                                     ((zerop top)
+                                      r)
+                                     ((board-row-clear-p (1- top) left right)
+                                      (+ (* tile-size (1- top)) r))
+                                     (t
+                                      (+ (* tile-size top) r)))))))
+          (:down
+           (incf* y (min pixels (- (cond
+                                     ((= bottom (1- board-height))
+                                      (- (* tile-size board-height) r))
+                                     ((board-row-clear-p (1+ bottom) left right)
+                                      (- (* tile-size (+ bottom 2)) r))
+                                     (t
+                                      (- (* tile-size (1+ bottom)) r)))
+                                   y))))
+          (:left
+           (decf* x (min pixels (- x
+                                   (cond
+                                     ((zerop left)
+                                      r)
+                                     ((board-column-clear-p (1- left) top bottom)
+                                      (+ (* tile-size (1- left)) r))
+                                     (t
+                                      (+ (* tile-size left) r)))))))
+          (:right
+           (incf* x (min pixels (- (cond
+                                  ((= right (1- board-width))
+                                   (- (* tile-size board-width) r))
+                                  ((board-column-clear-p (1+ right) top bottom)
+                                   (- (* tile-size (+ right 2)) r))
+                                  (t
+                                   (- (* tile-size (1+ right)) r)))
+                                x)))))))))
 
 (defmethod draw ((pacman pacman))
   (with-slots ((r radius) x y direction)
@@ -346,13 +417,13 @@
     (:sdl-key-f6
      (setf *background* *yellow*))
     (:sdl-key-a
-     (incf (pacman-speed *pacman*)))
+     (incf (unit-speed *pacman*)))
     (:sdl-key-s
-     (decf (pacman-speed *pacman*)))
+     (decf (unit-speed *pacman*)))
     (:sdl-key-d
-     (incf (pacman-radius *pacman*)))
+     (incf (unit-radius *pacman*)))
     (:sdl-key-f
-     (decf (pacman-radius *pacman*)))
+     (decf (unit-radius *pacman*)))
     (:sdl-key-x
      (pacman-add-target *pacman* 5))
     (:sdl-key-q
@@ -360,8 +431,8 @@
     (:sdl-key-w
      (decf *target-radius*))
     (:sdl-key-t
-     (setf (pacman-x *pacman*) (/ *width* 2))
-     (setf (pacman-y *pacman*) (/ (- *height* 100) 2)))
+     (setf (unit-x *pacman*) (/ *width* 2))
+     (setf (unit-y *pacman*) (/ (- *height* 100) 2)))
     (:sdl-key-c
      (clock-toggle *clock*))))
 
@@ -396,9 +467,9 @@
     (fill-surface *black*)
     (draw-string-solid-* "Lispac" 10 10)
     (draw-string-solid-*
-     (format nil "FPS ~d Speed ~d" (frame-rate) (pacman-speed *pacman*))
+     (format nil "FPS ~d Speed ~d" (frame-rate) (unit-speed *pacman*))
                          10 35)
-    (draw-string-solid-* (format nil "Radius ~d" (pacman-radius *pacman*))
+    (draw-string-solid-* (format nil "Radius ~d" (unit-radius *pacman*))
                          10 60)
     (draw-string-solid-* (format nil ":: Score ~d ::" *score*)
                          (/ *width* 2) 60 :justify :right)
@@ -409,82 +480,9 @@
 (defun update-pacman ()
   (with-slots (x y (r radius) speed direction next-direction)
       *pacman*
-    (let* ((board-width (board-width *board*))
-           (board-height (board-height *board*))
-           (tile-size (board-tile-size *board*))
+    (let* ((tile-size (board-tile-size *board*)))
 
-           ;; Tiles wich pacman use as a square
-           (left (floor (- x r) tile-size))
-           (top (floor (- y r) tile-size))
-           (right (floor (+ x r -1) tile-size))
-           (bottom (floor (+ y r -1) tile-size))
-
-           displacement)
-
-      (labels
-          (
-           ;; Try to move X pixels in the given direction, stop if
-           ;; pacman hits a wall or the board corners.
-           (move-up (pixels)
-             (setf displacement
-                   (- y
-                      (max (cond
-                             ((zerop top)
-                              r)
-                             ((board-row-clear-p (1- top) left right)
-                              (+ (* tile-size (1- top)) r))
-                             (t
-                              (+ (* tile-size top) r)))
-                           (- y pixels))))
-             (decf y displacement))
-           (move-down (pixels)
-             (setf displacement
-                   (- (min (cond
-                             ((= bottom (1- board-height))
-                              (- (* tile-size board-height) r))
-                             ((board-row-clear-p (1+ bottom) left right)
-                              (- (* tile-size (+ bottom 2)) r))
-                             (t
-                              (- (* tile-size (1+ bottom)) r)))
-                           (+ y pixels))
-                      y))
-             (incf y displacement))
-           (move-left (pixels)
-             (setf displacement
-                   (- x
-                      (max (cond
-                             ((zerop left)
-                              r)
-                             ((board-column-clear-p (1- left) top bottom)
-                              (+ (* tile-size (1- left)) r))
-                             (t
-                              (+ (* tile-size left) r)))
-                           (- x pixels))))
-             (decf x displacement))
-           (move-right (pixels)
-             (setf displacement
-                   (- (min (cond
-                             ((= right (1- board-width))
-                              (- (* tile-size board-width) r))
-                             ((board-column-clear-p (1+ right) top bottom)
-                              (- (* tile-size (+ right 2)) r))
-                             (t
-                              (- (* tile-size (1+ right)) r)))
-                           (+ x pixels))
-                      x))
-             (incf x displacement))
-
-           ;; Move in the requested direction and return how much
-           ;; pixels pacman moved
-           (move (pixels direction)
-             (case direction
-               (:up (move-up pixels))
-               (:down (move-down pixels))
-               (:left (move-left pixels))
-               (:right (move-right pixels)))
-             displacement))
-        (declare (inline move))
-
+      (with-unit-boundary (*pacman* tile-size)
         ;; Print pacman used tiles square if requested
         (when *print-units-rectangles-p*
           (let ((pacman-square (rectangle-from-edges-*
@@ -497,7 +495,7 @@
         ;; Do the actual pacman moves
         ;;
         ;; TODO: Document it!
-        (if (zerop (move speed next-direction))
+        (if (zerop (move-unit *pacman* speed next-direction))
             (progn
               (let* ((pixels-to-next-tile
                       (ecase direction
@@ -521,7 +519,7 @@
                                 (+ r (* tile-size right))
                                 (+ r (* tile-size (1+ right))))
                             x)))))
-                (move (min speed pixels-to-next-tile) direction)))
+                (move-unit *pacman* (min speed pixels-to-next-tile) direction)))
             (setf direction next-direction)))))
 
   (draw *pacman*))
