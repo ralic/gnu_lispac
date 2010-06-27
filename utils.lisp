@@ -126,6 +126,20 @@
 
 ;;; Assignators
 
+;; Like incf, but return delta
+(defmacro incf* (place delta)
+  (with-gensyms (delta-tmp)
+    `(let ((,delta-tmp ,delta))
+       (incf ,place ,delta-tmp)
+       ,delta-tmp)))
+
+;; Like decf, but return delta
+(defmacro decf* (place delta)
+  (with-gensyms (delta-tmp)
+    `(let ((,delta-tmp ,delta))
+       (decf ,place ,delta-tmp)
+       ,delta-tmp)))
+
 (defmacro multiple-setf (value &rest places)
   (with-gensyms (tmp)
     `(let ((,tmp ,value))
