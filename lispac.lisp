@@ -221,10 +221,11 @@
     :accessor target-x
     :initform 0
     :initarg :x)
-   (y :type fixnum
-      :accessor target-y
-      :initform 0
-      :initarg :y)))
+   (y
+    :type fixnum
+    :accessor target-y
+    :initform 0
+    :initarg :y)))
 
 (defun* add-target ((integer count x y))
   (push (make-instance 'target :count count :x x :y y) *targets*))
