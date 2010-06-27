@@ -319,41 +319,45 @@
       (with-unit-boundary (unit tile-size)
         (case direction
           (:up
-           (decf* y (min pixels (- y
-                                   (cond
-                                     ((zerop top)
-                                      r)
-                                     ((board-row-clear-p (1- top) left right)
-                                      (+ (* tile-size (1- top)) r))
-                                     (t
-                                      (+ (* tile-size top) r)))))))
+           (decf* y (min pixels
+                         (- y
+                            (cond
+                              ((zerop top)
+                               r)
+                              ((board-row-clear-p (1- top) left right)
+                               (+ (* tile-size (1- top)) r))
+                              (t
+                               (+ (* tile-size top) r)))))))
           (:down
-           (incf* y (min pixels (- (cond
-                                     ((= bottom (1- board-height))
-                                      (- (* tile-size board-height) r))
-                                     ((board-row-clear-p (1+ bottom) left right)
-                                      (- (* tile-size (+ bottom 2)) r))
-                                     (t
-                                      (- (* tile-size (1+ bottom)) r)))
-                                   y))))
+           (incf* y (min pixels
+                         (- (cond
+                              ((= bottom (1- board-height))
+                               (- (* tile-size board-height) r))
+                              ((board-row-clear-p (1+ bottom) left right)
+                               (- (* tile-size (+ bottom 2)) r))
+                              (t
+                               (- (* tile-size (1+ bottom)) r)))
+                            y))))
           (:left
-           (decf* x (min pixels (- x
-                                   (cond
-                                     ((zerop left)
-                                      r)
-                                     ((board-column-clear-p (1- left) top bottom)
-                                      (+ (* tile-size (1- left)) r))
-                                     (t
-                                      (+ (* tile-size left) r)))))))
+           (decf* x (min pixels
+                         (- x
+                            (cond
+                              ((zerop left)
+                               r)
+                              ((board-column-clear-p (1- left) top bottom)
+                               (+ (* tile-size (1- left)) r))
+                              (t
+                               (+ (* tile-size left) r)))))))
           (:right
-           (incf* x (min pixels (- (cond
-                                  ((= right (1- board-width))
-                                   (- (* tile-size board-width) r))
-                                  ((board-column-clear-p (1+ right) top bottom)
-                                   (- (* tile-size (+ right 2)) r))
-                                  (t
-                                   (- (* tile-size (1+ right)) r)))
-                                x)))))))))
+           (incf* x (min pixels
+                         (- (cond
+                              ((= right (1- board-width))
+                               (- (* tile-size board-width) r))
+                              ((board-column-clear-p (1+ right) top bottom)
+                               (- (* tile-size (+ right 2)) r))
+                              (t
+                               (- (* tile-size (1+ right)) r)))
+                            x)))))))))
 
 (defmethod draw ((pacman pacman))
   (with-slots ((r radius) x y direction)
