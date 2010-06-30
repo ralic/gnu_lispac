@@ -45,6 +45,7 @@
 
 (defvar *pacman*)                       ; The yellow ball :-)
 (defvar *targets* ())
+(defvar *monsters* ())
 
 ;; Hmm... do draw & *orange* belong to this section? - MXCC
 (defgeneric draw (unit))
@@ -286,6 +287,17 @@
     :initform :right
     :accessor pacman-next-direction)))
 
+(defclass monster (unit)
+  ((crazyp
+    :initarg :crazyp
+    :type boolean
+    :accessor crazyp)
+   ;; This is unrelated to pacman-direction
+   (direction
+    :initarg :direction
+    :type (member :up :down :left :right)
+    :accessor monster-direction)))
+
 ;; Tiles wich pacman use as a square
 (defmacro with-unit-boundary ((unit tile-size &optional prefix) &body body)
   (flet ((intern* (name)
@@ -394,6 +406,11 @@
                                     :color *background*)
          (draw-filled-circle-* x (- y (round r 2)) (round r 5)
                                :color *black*))))))
+
+(defmethod draw ((monster monster))
+  (with-slots ((r radius) x y) monster
+    (draw-filled-circle-* x y r :color *orange*)
+    (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)))
 
 ;;; Game loop
 
@@ -529,10 +546,31 @@
 
   (draw *pacman*))
 
+;; Move the monsters and check colisions.
+(defun update-monsters ()
+  (setf *monsters*
+        (with-collecting
+          (dolist (monster *monsters*)
+            (declare (monster monster))
+            (cond
+              ;; No colision
+              ((<= (+ (unit-radius monster) (unit-radius *pacman*))
+                   (distance-* (unit-x monster) (unit-y monster)
+                               (unit-x *pacman*) (unit-y *pacman*)))
+               (draw monster)
+               (collect monster))
+
+              ;; Colision with hostile monster
+              ((crazyp monster)
+
+               ;; TODO: Put something more friendly here
+               (error "Monster ate pacman")))))))
+
 (defun update ()
   (blit-surface (board-surface *board*))
   (clock-tick *clock*)
   (clocks-tick)
+  (update-monsters)
   (update-pacman)
   (update-state)
   (update-targets)
