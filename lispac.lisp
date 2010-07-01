@@ -299,7 +299,7 @@
     :accessor monster-direction)))
 
 ;; Tiles wich pacman use as a square
-(defmacro with-unit-boundary ((unit tile-size &optional prefix) &body body)
+(defmacro with-unit-boundary ((unit &optional tile-size prefix) &body body)
   (flet ((intern* (name)
            (if prefix
                (intern (concatenate 'string prefix name))
@@ -308,13 +308,13 @@
           (top (intern* "TOP"))
           (right (intern* "RIGHT"))
           (bottom (intern* "BOTTOM")))
-      (with-gensyms (tile-size-tmp)
-        `(with-slots (x y radius) ,unit
-           (let* ((,tile-size-tmp ,tile-size)
-                  (,left (floor (- x r) ,tile-size-tmp))
-                  (,top (floor (- y r) ,tile-size-tmp))
-                  (,right (floor (+ x r -1) ,tile-size-tmp))
-                  (,bottom (floor (+ y r -1) ,tile-size-tmp)))
+      (with-gensyms (tile-size-tmp x y r)
+        `(with-slots ((,x x) (,y y) (,r radius)) ,unit
+           (let* ((,tile-size-tmp ,(or tile-size `(board-tile-size *board*)))
+                  (,left (floor (- ,x ,r) ,tile-size-tmp))
+                  (,top (floor (- ,y ,r) ,tile-size-tmp))
+                  (,right (floor (+ ,x ,r -1) ,tile-size-tmp))
+                  (,bottom (floor (+ ,y ,r -1) ,tile-size-tmp)))
              ,@body))))))
 
 ;; Move in the requested direction and return how much
@@ -328,7 +328,7 @@
         (board-height (board-height *board*))
         (tile-size (board-tile-size *board*)))
     (with-slots (x y (r radius)) unit
-      (with-unit-boundary (unit tile-size)
+      (with-unit-boundary (unit)
         (case direction
           (:up
            (decf* y (min pixels
