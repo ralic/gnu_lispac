@@ -271,7 +271,11 @@
     :initarg :speed
     :type fixnum
     :initform 2
-    :accessor unit-speed)))
+    :accessor unit-speed)
+   (controller
+    :initarg :controller
+    :type function
+    :accessor unit-controller)))
 
 (defclass pacman (unit)
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
@@ -281,11 +285,7 @@
     :initarg :direction
     :type (member :up :down :left :right)
     :initform :right
-    :accessor pacman-direction)
-   (next-direction
-    :type (member :up :down :left :right)
-    :initform :right
-    :accessor pacman-next-direction)))
+    :accessor pacman-direction)))
 
 (defclass monster (unit)
   ((crazyp
@@ -412,6 +412,48 @@
     (draw-filled-circle-* x y r :color *orange*)
     (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)))
 
+;;;; Controllers
+
+(defun act (unit)
+  (declare (unit unit))
+  (funcall (unit-controller unit) unit))
+
+;;;;; Keyboard input
+
+(defvar *next-direction* :right)
+
+(defun standard-controller (unit)
+  (declare (unit unit))
+  (let ((tile-size (board-tile-size *board*)))
+    (with-unit-boundary (unit tile-size)
+      (with-slots (x y (r radius) speed direction) unit
+        (if (zerop (move-unit unit speed *next-direction*))
+            (progn
+              (let* ((pixels-to-next-tile
+                      (ecase direction
+                        (:up
+                         (- y
+                            (if (> (+ r y) (* tile-size (1+ top)))
+                                (- (* tile-size (1+ top)) r)
+                                (- (* tile-size top) r))))
+                        (:down
+                         (- (if (< (- y r) (* tile-size bottom))
+                                (+ r (* tile-size bottom))
+                                (+ r (* tile-size (1+ bottom))))
+                            y))
+                        (:left
+                         (- x
+                            (if (> (+ r x) (* tile-size (1+ left)))
+                                (- (* tile-size (1+ left)) r)
+                                (- (* tile-size left) r))))
+                        (:right
+                         (- (if (< (- x r) (* tile-size right))
+                                (+ r (* tile-size right))
+                                (+ r (* tile-size (1+ right))))
+                            x)))))
+                (move-unit *pacman* (min speed pixels-to-next-tile) direction)))
+            (setf direction *next-direction*))))))
+
 ;;; Game loop
 
 (defun keypress (key)
@@ -419,13 +461,13 @@
     (:sdl-key-escape
      (push-quit-event))
     (:sdl-key-up
-     (setf (pacman-next-direction *pacman*) :up))
+     (setf *next-direction* :up))
     (:sdl-key-down
-     (setf (pacman-next-direction *pacman*) :down))
+     (setf *next-direction* :down))
     (:sdl-key-left
-     (setf (pacman-next-direction *pacman*) :left))
+     (setf *next-direction* :left))
     (:sdl-key-right
-     (setf (pacman-next-direction *pacman*) :right))
+     (setf *next-direction* :right))
     (:sdl-key-f1
      (setf *background* *red*))
     (:sdl-key-f2
@@ -513,37 +555,8 @@
                                 (1- (* tile-size (1+ right)))
                                 (1- (* tile-size (1+ bottom))))))
             (draw-rectangle pacman-square :color *white*)))
-
         ;; Do the actual pacman moves
-        ;;
-        ;; TODO: Document it!
-        (if (zerop (move-unit *pacman* speed next-direction))
-            (progn
-              (let* ((pixels-to-next-tile
-                      (ecase direction
-                        (:up
-                         (- y
-                            (if (> (+ r y) (* tile-size (1+ top)))
-                                (- (* tile-size (1+ top)) r)
-                                (- (* tile-size top) r))))
-                        (:down
-                         (- (if (< (- y r) (* tile-size bottom))
-                                (+ r (* tile-size bottom))
-                                (+ r (* tile-size (1+ bottom))))
-                            y))
-                        (:left
-                         (- x
-                            (if (> (+ r x) (* tile-size (1+ left)))
-                                (- (* tile-size (1+ left)) r)
-                                (- (* tile-size left) r))))
-                        (:right
-                         (- (if (< (- x r) (* tile-size right))
-                                (+ r (* tile-size right))
-                                (+ r (* tile-size (1+ right))))
-                            x)))))
-                (move-unit *pacman* (min speed pixels-to-next-tile) direction)))
-            (setf direction next-direction)))))
-
+        (act *pacman*))))
   (draw *pacman*))
 
 ;; Move the monsters and check colisions.
@@ -588,7 +601,8 @@
       (setf (frame-rate) *fps*)
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
-      (setf *pacman* (make-instance 'pacman))
+      (setf *pacman* (make-instance 'pacman
+                                    :controller #'standard-controller))
       (with-surface
           (*default-surface* (create-surface *width* *height* :y 100))
         (update-board)
