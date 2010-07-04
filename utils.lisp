@@ -50,6 +50,31 @@
          ,@code)
        (cdr ,collected))))
 
+;; Bind `enqueue', `dequeue'. `peek-first' and `peek-last' to queue
+;; handlers.
+(defmacro with-queue ((&optional first-cons) &body body)
+  (with-gensyms ((first-cons first-cons) last-cons)
+    `(let (,first-cons ,last-cons)
+       (declare (ignorable ,first-cons))
+       (flet ((enqueue (item)
+                (if ,first-cons         ; Read "if not void"
+                    (let ((penultimate ,last-cons))
+                      (setf ,last-cons (cons item nil))
+                      (setf (cdr penultimate) ,last-cons))
+                    ;; If queue is void initialize it
+                    (multiple-setf (cons item nil) ,last-cons ,first-cons)))
+              (dequeue ()
+                (pop ,first-cons))
+              (peek-first ()
+                (car ,first-cons))
+              (peek-last ()
+                (car ,last-cons)))
+         (declare (ignorable (function enqueue)
+                             (function dequeue)
+                             (function peek-first)
+                             (function peek-last)))
+         ,@body))))
+
 (defmacro dorange ((var min max &optional (step 1)) &body body)
   `(loop for ,var from ,min to ,max by ,step
          do (progn ,@body)))
