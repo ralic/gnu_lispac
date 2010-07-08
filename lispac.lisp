@@ -469,7 +469,7 @@
 
 ;;;; Controllers
 
-(defun act (unit)
+(defun unit-act (unit)
   (declare (unit unit))
   (funcall (unit-controller unit) unit))
 
@@ -617,7 +617,7 @@
                                 (1- (* tile-size (1+ bottom))))))
             (draw-rectangle pacman-square :color *white*)))
         ;; Do the actual pacman moves
-        (act *pacman*))))
+        (unit-act *pacman*))))
   (draw *pacman*))
 
 ;; Move the monsters and check colisions.
