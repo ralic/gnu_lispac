@@ -128,12 +128,12 @@
       (loop while next-layer
             for distance = 0 then (1+ distance)
             do (progn
+                 (setf visited this-layer)
                  (setf this-layer next-layer)
                  (nilf next-layer)
                  (dolist (tile this-layer)
                    (when (find tile visited :test #'equalp)
                      (error "alredy visited"))
-                   (push tile visited)
                    (let ((x (x tile))
                          (y (y tile)))
                      ;; TODO: Clean up.
