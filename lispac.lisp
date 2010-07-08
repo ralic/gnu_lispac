@@ -43,6 +43,10 @@
 ;; If non-nil, print the tiles the units uses.
 (defvar *print-units-rectangles-p* nil)
 
+;; If non-nil, print tile background in grayscale according to it
+;; distance to respawn point.
+(defvar *print-respawn-gradient* nil)
+
 (defvar *pacman*)                       ; The yellow ball :-)
 (defvar *targets* ())
 (defvar *monsters* ())
@@ -65,14 +69,26 @@
    (surface
     :initarg :surface
     :type surface
-    :accessor board-surface)))
+    :accessor board-surface)
+   (respawn
+    :initarg :respawn
+    :type point
+    :accessor board-respawn)
+   (respawn-gradient
+    :initarg :respawn-gradient
+    :accessor board-respawn-gradient)))
 
 (defun make-board (tile-size width height &optional tile)
   (make-instance 'board
                  :tile-size tile-size
-                 :tiles (make-array (list width height)
-                                    :element-type '(member t nil)
-                                    :initial-element tile)))
+                 :tiles
+                 (make-array (list width height)
+                             :element-type '(member t nil)
+                             :initial-element tile)
+                 :respawn-gradient
+                 (make-array (list width height)
+                             :element-type 'fixnum
+                             :initial-element most-positive-fixnum)))
 
 (defun tile (board x y)
   (declare (board board)
@@ -100,6 +116,45 @@
               (and (divisiblep x 4)
                    (divisiblep y 4)))))
     board))
+
+(defun board-update-respawn-gradient (board &optional x y)
+  (declare (board board))
+  (with-slots (respawn respawn-gradient) board
+    (when (or x y)
+      (setf respawn (point :x x :y y)))
+    (let ((next-layer (list respawn))
+          this-layer
+          visited)
+      (loop while next-layer
+            for distance = 0 then (1+ distance)
+            do (progn
+                 (setf this-layer next-layer)
+                 (nilf next-layer)
+                 (dolist (tile this-layer)
+                   (when (find tile visited :test #'equalp)
+                     (error "alredy visited"))
+                   (push tile visited)
+                   (let ((x (x tile))
+                         (y (y tile)))
+                     ;; TODO: Clean up.
+
+                     ;; (format t "visiting ~d.~d~%" x y)
+                     ;; (format t " visited ~a~%" visited)
+                     (setf (aref respawn-gradient (x tile) (y tile)) distance)
+                     (dorange (x (1- x) (1+ x))
+                       (dorange (y (1- y) (1+ y))
+                         (let ((point (point :x x :y y)))
+                           (or (< x 0)
+                               (< y 0)
+                               (<= (board-width board) x)
+                               (<= (board-height board) y)
+                               (tile board x y)
+                               (find point visited :test #'equalp)
+                               (find point next-layer :test #'equalp)
+                               (find point this-layer :test #'equalp)
+                               (push point next-layer)))))
+                     ;; (format t " pending ~a~%" next-layer)
+                     )))))))
 
 ;; Load the board from a portable bit map.
 
@@ -501,19 +556,25 @@
      (clock-toggle *clock*))))
 
 (defun update-board ()
-  (with-slots (tile-size surface) *board*
+  (with-slots (tile-size surface respawn-gradient) *board*
     (let ((width (board-width *board*))
           (height (board-height *board*)))
       (setf surface (create-surface (* tile-size width)
                                     (* tile-size height)))
       (dotimes (y height)
         (dotimes (x width)
-          (draw-box-* (* tile-size x) (* tile-size y)
-                      tile-size tile-size
-                      :surface surface
-                      :color (if (tile *board* x y)
-                                 *red*
-                                 *black*)))))))
+          (let* ((gradient-value (* 5 (aref respawn-gradient x y)))
+                 (color (if (tile *board* x y)
+                            *red*
+                            (if *print-respawn-gradient*
+                                (color :r gradient-value
+                                       :g gradient-value
+                                       :b gradient-value)
+                                *black*))))
+            (draw-box-* (* tile-size x) (* tile-size y)
+                        tile-size tile-size
+                        :surface surface
+                        :color color)))))))
 
 (defun update-targets ()
   (loop with new-targets = nil
