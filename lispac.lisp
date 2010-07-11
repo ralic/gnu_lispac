@@ -420,6 +420,36 @@
                                (- (* *tile-size* (1+ right)) r)))
                             x)))))))))
 
+;; Move `unit' up to `max-pixels' to the begin of the next
+;; left/right/top/left row or column according to `direction'.  Return
+;; the pixels moved count.
+(defun unit-align (unit max-pixels direction)
+  (with-slots (x y (r radius)) unit
+    (with-unit-boundary (unit)
+      (let* ((pixels-to-next-tile
+              (ecase direction
+                (:up
+                 (- y
+                    (if (> (+ r y) (* *tile-size* (1+ top)))
+                        (- (* *tile-size* (1+ top)) r)
+                        (- (* *tile-size* top) r))))
+                (:down
+                 (- (if (< (- y r) (* *tile-size* bottom))
+                        (+ r (* *tile-size* bottom))
+                        (+ r (* *tile-size* (1+ bottom))))
+                    y))
+                (:left
+                 (- x
+                    (if (> (+ r x) (* *tile-size* (1+ left)))
+                        (- (* *tile-size* (1+ left)) r)
+                        (- (* *tile-size* left) r))))
+                (:right
+                 (- (if (< (- x r) (* *tile-size* right))
+                        (+ r (* *tile-size* right))
+                        (+ r (* *tile-size* (1+ right))))
+                    x)))))
+        (move-unit unit (min max-pixels pixels-to-next-tile) direction)))))
+
 (defmethod draw ((pacman pacman))
   (with-slots ((r radius) x y direction)
       pacman
@@ -473,34 +503,10 @@
 
 (defun standard-controller (unit)
   (declare (unit unit))
-  (with-unit-boundary (unit)
-    (with-slots (x y (r radius) speed direction) unit
-      (if (zerop (move-unit unit speed *next-direction*))
-          (progn
-            (let* ((pixels-to-next-tile
-                    (ecase direction
-                      (:up
-                       (- y
-                          (if (> (+ r y) (* *tile-size* (1+ top)))
-                              (- (* *tile-size* (1+ top)) r)
-                              (- (* *tile-size* top) r))))
-                      (:down
-                       (- (if (< (- y r) (* *tile-size* bottom))
-                              (+ r (* *tile-size* bottom))
-                              (+ r (* *tile-size* (1+ bottom))))
-                          y))
-                      (:left
-                       (- x
-                          (if (> (+ r x) (* *tile-size* (1+ left)))
-                              (- (* *tile-size* (1+ left)) r)
-                              (- (* *tile-size* left) r))))
-                      (:right
-                       (- (if (< (- x r) (* *tile-size* right))
-                              (+ r (* *tile-size* right))
-                              (+ r (* *tile-size* (1+ right))))
-                          x)))))
-              (move-unit *pacman* (min speed pixels-to-next-tile) direction)))
-          (setf direction *next-direction*)))))
+  (with-slots (x y (r radius) speed direction) unit
+    (if (zerop (move-unit unit speed *next-direction*))
+        (unit-align unit speed direction)
+        (setf direction *next-direction*))))
 
 ;;; Game loop
 
