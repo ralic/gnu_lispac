@@ -36,6 +36,7 @@
 ;; Width & height of the frame in pixels
 (defvar *width*  600)
 (defvar *height* 400)
+(defvar *tile-size* 12)
 
 ;; Board stored as a board object.
 (defvar *board*)
@@ -59,11 +60,7 @@
 ;;; Board
 
 (defclass board ()
-  ((tile-size
-    :initarg :tile-size
-    :type fixnum
-    :accessor board-tile-size)
-   (tiles
+  ((tiles
     :initarg :tiles
     :accessor board-tiles)
    (surface
@@ -78,9 +75,8 @@
     :initarg :respawn-gradient
     :accessor board-respawn-gradient)))
 
-(defun make-board (tile-size width height &optional tile)
+(defun make-board (width height &optional tile)
   (make-instance 'board
-                 :tile-size tile-size
                  :tiles
                  (make-array (list width height)
                              :element-type '(member t nil)
@@ -108,8 +104,8 @@
   (declare (board board))
   (array-dimension (board-tiles board) 1))
 
-(defun generate-dumb-board (tile-size width height)
-  (let ((board (make-board tile-size width height)))
+(defun generate-dumb-board (width height)
+  (let ((board (make-board width height)))
     (dotimes (x width)
       (dotimes (y height)
         (setf (tile board x y)
@@ -159,11 +155,11 @@
 ;; Load the board from a portable bit map.
 
 ;; 0 = way, 1 = wall.
-(defun load-board-from-pbm (stream tile-size)
+(defun load-board-from-pbm (stream)
   (let* ((dimensions (read-pbm-header stream))
          (width (elt dimensions 0))
          (height (elt dimensions 1))
-         (board (make-board tile-size width height)))
+         (board (make-board width height)))
     (do-pbm-pixels
         (pixel)
         (dimensions x y)
@@ -171,9 +167,9 @@
       (setf (tile board x y) (= 1 pixel)))
     board))
 
-(defun load-board-from-pbm-file (file tile-size)
+(defun load-board-from-pbm-file (file)
   (with-open-file (s file :element-type '(unsigned-byte 8))
-    (load-board-from-pbm s tile-size)))
+    (load-board-from-pbm s)))
 
 (defun board-square-clear-p (left top right bottom)
   (block function
@@ -354,7 +350,7 @@
     :accessor monster-direction)))
 
 ;; Tiles wich pacman use as a square
-(defmacro with-unit-boundary ((unit &optional tile-size prefix) &body body)
+(defmacro with-unit-boundary ((unit &optional prefix) &body body)
   (flet ((intern* (name)
            (if prefix
                (intern (concatenate 'string prefix name))
@@ -363,13 +359,12 @@
           (top (intern* "TOP"))
           (right (intern* "RIGHT"))
           (bottom (intern* "BOTTOM")))
-      (with-gensyms (tile-size-tmp x y r)
+      (with-gensyms (x y r)
         `(with-slots ((,x x) (,y y) (,r radius)) ,unit
-           (let* ((,tile-size-tmp ,(or tile-size `(board-tile-size *board*)))
-                  (,left (floor (- ,x ,r) ,tile-size-tmp))
-                  (,top (floor (- ,y ,r) ,tile-size-tmp))
-                  (,right (floor (+ ,x ,r -1) ,tile-size-tmp))
-                  (,bottom (floor (+ ,y ,r -1) ,tile-size-tmp)))
+           (let* ((,left (floor (- ,x ,r) *tile-size*))
+                  (,top (floor (- ,y ,r) *tile-size*))
+                  (,right (floor (+ ,x ,r -1) *tile-size*))
+                  (,bottom (floor (+ ,y ,r -1) *tile-size*)))
              ,@body))))))
 
 ;; Move in the requested direction and return how much
@@ -380,8 +375,7 @@
   (declare ;; (direction direction) and define direction type - MXCC
            (fixnum pixels))
   (let ((board-width (board-width *board*))
-        (board-height (board-height *board*))
-        (tile-size (board-tile-size *board*)))
+        (board-height (board-height *board*)))
     (with-slots (x y (r radius)) unit
       (with-unit-boundary (unit)
         (case direction
@@ -392,18 +386,18 @@
                               ((zerop top)
                                r)
                               ((board-row-clear-p (1- top) left right)
-                               (+ (* tile-size (1- top)) r))
+                               (+ (* *tile-size* (1- top)) r))
                               (t
-                               (+ (* tile-size top) r)))))))
+                               (+ (* *tile-size* top) r)))))))
           (:down
            (incf* y (min pixels
                          (- (cond
                               ((= bottom (1- board-height))
-                               (- (* tile-size board-height) r))
+                               (- (* *tile-size* board-height) r))
                               ((board-row-clear-p (1+ bottom) left right)
-                               (- (* tile-size (+ bottom 2)) r))
+                               (- (* *tile-size* (+ bottom 2)) r))
                               (t
-                               (- (* tile-size (1+ bottom)) r)))
+                               (- (* *tile-size* (1+ bottom)) r)))
                             y))))
           (:left
            (decf* x (min pixels
@@ -412,18 +406,18 @@
                               ((zerop left)
                                r)
                               ((board-column-clear-p (1- left) top bottom)
-                               (+ (* tile-size (1- left)) r))
+                               (+ (* *tile-size* (1- left)) r))
                               (t
-                               (+ (* tile-size left) r)))))))
+                               (+ (* *tile-size* left) r)))))))
           (:right
            (incf* x (min pixels
                          (- (cond
                               ((= right (1- board-width))
-                               (- (* tile-size board-width) r))
+                               (- (* *tile-size* board-width) r))
                               ((board-column-clear-p (1+ right) top bottom)
-                               (- (* tile-size (+ right 2)) r))
+                               (- (* *tile-size* (+ right 2)) r))
                               (t
-                               (- (* tile-size (1+ right)) r)))
+                               (- (* *tile-size* (1+ right)) r)))
                             x)))))))))
 
 (defmethod draw ((pacman pacman))
@@ -479,35 +473,34 @@
 
 (defun standard-controller (unit)
   (declare (unit unit))
-  (let ((tile-size (board-tile-size *board*)))
-    (with-unit-boundary (unit tile-size)
-      (with-slots (x y (r radius) speed direction) unit
-        (if (zerop (move-unit unit speed *next-direction*))
-            (progn
-              (let* ((pixels-to-next-tile
-                      (ecase direction
-                        (:up
-                         (- y
-                            (if (> (+ r y) (* tile-size (1+ top)))
-                                (- (* tile-size (1+ top)) r)
-                                (- (* tile-size top) r))))
-                        (:down
-                         (- (if (< (- y r) (* tile-size bottom))
-                                (+ r (* tile-size bottom))
-                                (+ r (* tile-size (1+ bottom))))
-                            y))
-                        (:left
-                         (- x
-                            (if (> (+ r x) (* tile-size (1+ left)))
-                                (- (* tile-size (1+ left)) r)
-                                (- (* tile-size left) r))))
-                        (:right
-                         (- (if (< (- x r) (* tile-size right))
-                                (+ r (* tile-size right))
-                                (+ r (* tile-size (1+ right))))
-                            x)))))
-                (move-unit *pacman* (min speed pixels-to-next-tile) direction)))
-            (setf direction *next-direction*))))))
+  (with-unit-boundary (unit)
+    (with-slots (x y (r radius) speed direction) unit
+      (if (zerop (move-unit unit speed *next-direction*))
+          (progn
+            (let* ((pixels-to-next-tile
+                    (ecase direction
+                      (:up
+                       (- y
+                          (if (> (+ r y) (* *tile-size* (1+ top)))
+                              (- (* *tile-size* (1+ top)) r)
+                              (- (* *tile-size* top) r))))
+                      (:down
+                       (- (if (< (- y r) (* *tile-size* bottom))
+                              (+ r (* *tile-size* bottom))
+                              (+ r (* *tile-size* (1+ bottom))))
+                          y))
+                      (:left
+                       (- x
+                          (if (> (+ r x) (* *tile-size* (1+ left)))
+                              (- (* *tile-size* (1+ left)) r)
+                              (- (* *tile-size* left) r))))
+                      (:right
+                       (- (if (< (- x r) (* *tile-size* right))
+                              (+ r (* *tile-size* right))
+                              (+ r (* *tile-size* (1+ right))))
+                          x)))))
+              (move-unit *pacman* (min speed pixels-to-next-tile) direction)))
+          (setf direction *next-direction*)))))
 
 ;;; Game loop
 
@@ -556,11 +549,11 @@
      (clock-toggle *clock*))))
 
 (defun update-board ()
-  (with-slots (tile-size surface respawn-gradient) *board*
+  (with-slots (surface respawn-gradient) *board*
     (let ((width (board-width *board*))
           (height (board-height *board*)))
-      (setf surface (create-surface (* tile-size width)
-                                    (* tile-size height)))
+      (setf surface (create-surface (* *tile-size* width)
+                                    (* *tile-size* height)))
       (dotimes (y height)
         (dotimes (x width)
           (let* ((gradient-value (* 5 (aref respawn-gradient x y)))
@@ -571,8 +564,8 @@
                                        :g gradient-value
                                        :b gradient-value)
                                 *black*))))
-            (draw-box-* (* tile-size x) (* tile-size y)
-                        tile-size tile-size
+            (draw-box-* (* *tile-size* x) (* *tile-size* y)
+                        *tile-size* *tile-size*
                         :surface surface
                         :color color)))))))
 
@@ -605,19 +598,17 @@
 (defun update-pacman ()
   (with-slots (x y (r radius) speed direction next-direction)
       *pacman*
-    (let* ((tile-size (board-tile-size *board*)))
-
-      (with-unit-boundary (*pacman* tile-size)
-        ;; Print pacman used tiles square if requested
-        (when *print-units-rectangles-p*
-          (let ((pacman-square (rectangle-from-edges-*
-                                (* tile-size left)
-                                (* tile-size top)
-                                (1- (* tile-size (1+ right)))
-                                (1- (* tile-size (1+ bottom))))))
-            (draw-rectangle pacman-square :color *white*)))
-        ;; Do the actual pacman moves
-        (unit-act *pacman*))))
+    (with-unit-boundary (*pacman*)
+      ;; Print pacman used tiles square if requested
+      (when *print-units-rectangles-p*
+        (let ((pacman-square (rectangle-from-edges-*
+                              (* *tile-size* left)
+                              (* *tile-size* top)
+                              (1- (* *tile-size* (1+ right)))
+                              (1- (* *tile-size* (1+ bottom))))))
+          (draw-rectangle pacman-square :color *white*)))
+      ;; Do the actual pacman moves
+      (unit-act *pacman*)))
   (draw *pacman*))
 
 ;; Move the monsters and check colisions.
