@@ -462,6 +462,10 @@
     :initarg :crazyp
     :type boolean
     :accessor crazyp)
+   (livep
+    :initarg :livep
+    :type boolean
+    :accessor livep)
    ;; This is unrelated to pacman-direction
    (direction
     :initarg :direction
@@ -472,6 +476,47 @@
   (with-slots ((r radius) x y) monster
     (draw-filled-circle-* x y r :color *orange*)
     (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)))
+
+;; Move a <<dead>> monster towards the respawn point
+(defun spirit-controller (monster)
+  (declare (monster monster))
+  (flet ((gradient (x y)
+           (aref (board-respawn-gradient *board*) x y)))
+    (with-slots (speed) monster
+      (with-unit-boundary (monster)
+        (cond
+          ;; Monster is between two tiles horizontaly
+          ((/= left right)
+           (if (< (gradient left top) (gradient right top))
+               (unit-align monster speed :left)
+               (unit-align monster speed :right)))
+          ;; Monster is between two tiles verticaly
+          ((/= top bottom)
+           (if (< (gradient left top) (gradient left bottom))
+               (unit-align monster speed :up)
+               (unit-align monster speed :down)))
+          ;; Monster is just on one tile
+          (t
+           (let ((current-gradient-value (gradient left top))
+                 (rightmost-tile (1- (board-width *board*)))
+                 (bottomost-tile (1- (board-height *board*))))
+             ;; Climb to a neighbor tile with lower gradient value.
+             ;; Note that the difference in gradient value should
+             ;; always be 1, so it isn't nessesary to check other
+             ;; neighbors.
+             (cond
+               ((and (< 0 left)
+                     (< (gradient (1- left) top) current-gradient-value))
+                (unit-align monster speed :left))
+               ((and (> rightmost-tile left)
+                     (< (gradient (1+ left) top) current-gradient-value))
+                (unit-align monster speed :right))
+               ((and (< 0 top)
+                     (< (gradient left (1- top)) current-gradient-value))
+                (unit-align monster speed :up))
+               ((and (> bottomost-tile top)
+                     (< (gradient left (1+ top)) current-gradient-value))
+                (unit-align monster speed :down))))))))))
 
 ;;; Targets
 
@@ -628,7 +673,21 @@
         (with-collecting
           (dolist (monster *monsters*)
             (declare (monster monster))
+            (unit-act monster)
             (cond
+              ;; Monster is in <<spirit>> form
+              ((not (livep monster))
+               (let ((respawn-x (x (board-respawn *board*)))
+                     (respawn-y (y (board-respawn *board*))))
+                 (with-unit-boundary (monster)
+                   (when (and (= respawn-x left right)
+                              (= respawn-y top bottom))
+                     ;; TODO: Set monster controller to standard
+                     ;; monster controller, when implemented.
+                     (setf (livep monster) t)))
+                 (draw monster)
+                 (collect monster)))
+
               ;; No colision
               ((<= (+ (unit-radius monster) (unit-radius *pacman*))
                    (distance-* (unit-x monster) (unit-y monster)
