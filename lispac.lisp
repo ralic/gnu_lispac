@@ -30,16 +30,10 @@
 
 (defvar *fps* 60)
 (defvar *score* 0)
+
+;;;; Display
+
 (defvar *background* *black*)
-(defvar *target-radius* 2)
-
-;; Width & height of the frame in pixels
-(defvar *width*  600)
-(defvar *height* 400)
-(defvar *tile-size* 12)
-
-;; Board stored as a board object.
-(defvar *board*)
 
 ;; If non-nil, print the tiles the units uses.
 (defvar *print-units-rectangles-p* nil)
@@ -48,14 +42,21 @@
 ;; distance to respawn point.
 (defvar *print-respawn-gradient* nil)
 
+;; Board stored as a board object.
+(defvar *board*)
+
+;; Width of the frame in pixels
+(defvar *width*  600)
+
+;; Height of the frame in pixels
+(defvar *height* 400)
+
+(defvar *tile-size* 12)
+
+(defvar *target-radius* 2)
 (defvar *pacman*)                       ; The yellow ball :-)
 (defvar *targets* ())
 (defvar *monsters* ())
-
-;; Hmm... do draw & *orange* belong to this section? - MXCC
-(defgeneric draw (unit))
-
-(defvar *orange* (color :r 255 :g 127 :b 0))
 
 ;;; Board
 
@@ -260,46 +261,6 @@
          ,var
        ,@body)))
 
-;;; Targets
-
-(defclass target ()
-  ((count
-    :type integer
-    :accessor target-count
-    :initform 0
-    :initarg :count)
-   (x
-    :type fixnum
-    :accessor target-x
-    :initform 0
-    :initarg :x)
-   (y
-    :type fixnum
-    :accessor target-y
-    :initform 0
-    :initarg :y)))
-
-(defun* add-target ((integer count x y))
-  (push (make-instance 'target :count count :x x :y y) *targets*))
-
-(defun* pacman-add-target ((pacman pac) (integer count))
-  (with-slots ((r radius) x y direction)
-      pac
-    (ecase direction
-      (:up (add-target count x (+ y r)))
-      (:down (add-target count x (- y r)))
-      (:left (add-target count (+ x r) y))
-      (:right (add-target count (- x r) y)))))
-
-(defun* pacman-eat-target-p ((target target))
-  (< (distance-* (unit-x *pacman*) (unit-y *pacman*)
-                 (target-x target) (target-y target))
-     (+ (unit-radius *pacman*) *target-radius*)))
-
-(defmethod draw ((target target))
-  (with-slots (x y) target
-    (draw-filled-circle-* x y *target-radius* :color *orange*)))
-
 ;;; Units
 
 (defclass unit ()
@@ -328,26 +289,7 @@
     :type function
     :accessor unit-controller)))
 
-(defclass pacman (unit)
-  (;; TODO: Implement pacman upon a surface, in order to we can use GFX
-   ;; to rotation and more.
-   ;; (surface ...)
-   (direction
-    :initarg :direction
-    :type (member :up :down :left :right)
-    :initform :right
-    :accessor pacman-direction)))
-
-(defclass monster (unit)
-  ((crazyp
-    :initarg :crazyp
-    :type boolean
-    :accessor crazyp)
-   ;; This is unrelated to pacman-direction
-   (direction
-    :initarg :direction
-    :type (member :up :down :left :right)
-    :accessor monster-direction)))
+(defgeneric draw (unit))
 
 ;; Tiles wich pacman use as a square
 (defmacro with-unit-boundary ((unit &optional prefix) &body body)
@@ -450,6 +392,24 @@
                     x)))))
         (move-unit unit (min max-pixels pixels-to-next-tile) direction)))))
 
+(defun unit-act (unit)
+  (declare (unit unit))
+  (funcall (unit-controller unit) unit))
+
+;;;; Pacman
+
+(defclass pacman (unit)
+  (;; TODO: Implement pacman upon a surface, in order to we can use GFX
+   ;; to rotation and more.
+   ;; (surface ...)
+   (direction
+    :initarg :direction
+    :type (member :up :down :left :right)
+    :initform :right
+    :accessor pacman-direction)
+   (controller
+    :initform #'standard-controller)))
+
 (defmethod draw ((pacman pacman))
   (with-slots ((r radius) x y direction)
       pacman
@@ -486,19 +446,6 @@
          (draw-filled-circle-* x (- y (round r 2)) (round r 5)
                                :color *black*))))))
 
-(defmethod draw ((monster monster))
-  (with-slots ((r radius) x y) monster
-    (draw-filled-circle-* x y r :color *orange*)
-    (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)))
-
-;;;; Controllers
-
-(defun unit-act (unit)
-  (declare (unit unit))
-  (funcall (unit-controller unit) unit))
-
-;;;;; Keyboard input
-
 (defvar *next-direction* :right)
 
 (defun standard-controller (unit)
@@ -507,6 +454,64 @@
     (if (zerop (move-unit unit speed *next-direction*))
         (unit-align unit speed direction)
         (setf direction *next-direction*))))
+
+;;;; Monster
+
+(defclass monster (unit)
+  ((crazyp
+    :initarg :crazyp
+    :type boolean
+    :accessor crazyp)
+   ;; This is unrelated to pacman-direction
+   (direction
+    :initarg :direction
+    :type (member :up :down :left :right)
+    :accessor monster-direction)))
+
+(defmethod draw ((monster monster))
+  (with-slots ((r radius) x y) monster
+    (draw-filled-circle-* x y r :color *orange*)
+    (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)))
+
+;;; Targets
+
+(defclass target ()
+  ((count
+    :type integer
+    :accessor target-count
+    :initform 0
+    :initarg :count)
+   (x
+    :type fixnum
+    :accessor target-x
+    :initform 0
+    :initarg :x)
+   (y
+    :type fixnum
+    :accessor target-y
+    :initform 0
+    :initarg :y)))
+
+(defun* add-target ((integer count x y))
+  (push (make-instance 'target :count count :x x :y y) *targets*))
+
+(defun* pacman-add-target ((pacman pac) (integer count))
+  (with-slots ((r radius) x y direction)
+      pac
+    (ecase direction
+      (:up (add-target count x (+ y r)))
+      (:down (add-target count x (- y r)))
+      (:left (add-target count (+ x r) y))
+      (:right (add-target count (- x r) y)))))
+
+(defun* pacman-eat-target-p ((target target))
+  (< (distance-* (unit-x *pacman*) (unit-y *pacman*)
+                 (target-x target) (target-y target))
+     (+ (unit-radius *pacman*) *target-radius*)))
+
+(defmethod draw ((target target))
+  (with-slots (x y) target
+    (draw-filled-circle-* x y *target-radius* :color *orange*)))
 
 ;;; Game loop
 

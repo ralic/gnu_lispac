@@ -26,6 +26,8 @@
 
 ;;; Misc
 
+(defvar *orange* (color :r 255 :g 127 :b 0))
+
 ;;; Generate variable names based on `gensym'
 (defmacro with-gensyms ((&rest vars) &body code)
   `(let ,(loop for var in vars
