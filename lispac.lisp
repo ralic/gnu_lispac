@@ -274,11 +274,6 @@
     :type fixnum
     :initform (round *height* 2)
     :accessor unit-y)
-   (radius
-    :initarg :radius
-    :type fixnum
-    :initform 12
-    :accessor unit-radius)
    (speed
     :initarg :speed
     :type fixnum
@@ -302,8 +297,9 @@
           (right (intern* "RIGHT"))
           (bottom (intern* "BOTTOM")))
       (with-gensyms (x y r)
-        `(with-slots ((,x x) (,y y) (,r radius)) ,unit
-           (let* ((,left (floor (- ,x ,r) *tile-size*))
+        `(with-slots ((,x x) (,y y)) ,unit
+           (let* ((,r (/ *tile-size* 2))
+                  (,left (floor (- ,x ,r) *tile-size*))
                   (,top (floor (- ,y ,r) *tile-size*))
                   (,right (floor (+ ,x ,r -1) *tile-size*))
                   (,bottom (floor (+ ,y ,r -1) *tile-size*)))
@@ -317,8 +313,9 @@
   (declare ;; (direction direction) and define direction type - MXCC
            (fixnum pixels))
   (let ((board-width (board-width *board*))
-        (board-height (board-height *board*)))
-    (with-slots (x y (r radius)) unit
+        (board-height (board-height *board*))
+        (r (/ *tile-size* 2)))
+    (with-slots (x y) unit
       (with-unit-boundary (unit)
         (case direction
           (:up
@@ -366,9 +363,10 @@
 ;; left/right/top/left row or column according to `direction'.  Return
 ;; the pixels moved count.
 (defun unit-align (unit max-pixels direction)
-  (with-slots (x y (r radius)) unit
+  (with-slots (x y) unit
     (with-unit-boundary (unit)
-      (let* ((pixels-to-next-tile
+      (let* ((r (/ *tile-size* 2))
+             (pixels-to-next-tile
               (ecase direction
                 (:up
                  (- y
@@ -411,10 +409,11 @@
     :initform #'standard-controller)))
 
 (defmethod draw ((pacman pacman))
-  (with-slots ((r radius) x y direction)
+  (with-slots (x y direction)
       pacman
     (let ((a (round (* 60 (abs (cos (* (/ (game-clock-ticks *clock*)
-                                          *fps*) 2 pi)))))))
+                                          *fps*) 2 pi))))))
+          (r (/ *tile-size* 2)))
       (draw-filled-circle-* x y r :color *yellow* :stroke-color *background*)
       (ecase direction
         (:up
@@ -450,7 +449,7 @@
 
 (defun standard-controller (unit)
   (declare (unit unit))
-  (with-slots (x y (r radius) speed direction) unit
+  (with-slots (x y speed direction) unit
     (if (zerop (move-unit unit speed *next-direction*))
         (unit-align unit speed direction)
         (setf direction *next-direction*))))
@@ -473,9 +472,11 @@
     :accessor monster-direction)))
 
 (defmethod draw ((monster monster))
-  (with-slots ((r radius) x y) monster
-    (draw-filled-circle-* x y r :color *orange*)
-    (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)))
+  (with-slots (x y) monster
+    (let ((r (/ *tile-size* 2)))
+      (draw-filled-circle-* x y r :color *orange*)
+      (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)
+      )))
 
 ;; Move a <<dead>> monster towards the respawn point
 (defun spirit-controller (monster)
@@ -541,18 +542,19 @@
   (push (make-instance 'target :count count :x x :y y) *targets*))
 
 (defun* pacman-add-target ((pacman pac) (integer count))
-  (with-slots ((r radius) x y direction)
+  (with-slots (x y direction)
       pac
-    (ecase direction
-      (:up (add-target count x (+ y r)))
-      (:down (add-target count x (- y r)))
-      (:left (add-target count (+ x r) y))
-      (:right (add-target count (- x r) y)))))
+    (let ((r (/ *tile-size* 2)))
+      (ecase direction
+        (:up (add-target count x (+ y r)))
+        (:down (add-target count x (- y r)))
+        (:left (add-target count (+ x r) y))
+        (:right (add-target count (- x r) y))))))
 
 (defun* pacman-eat-target-p ((target target))
   (< (distance-* (unit-x *pacman*) (unit-y *pacman*)
                  (target-x target) (target-y target))
-     (+ (unit-radius *pacman*) *target-radius*)))
+     (+ *tile-size* *target-radius*)))
 
 (defmethod draw ((target target))
   (with-slots (x y) target
@@ -588,10 +590,6 @@
      (incf (unit-speed *pacman*)))
     (:sdl-key-s
      (decf (unit-speed *pacman*)))
-    (:sdl-key-d
-     (incf (unit-radius *pacman*)))
-    (:sdl-key-f
-     (decf (unit-radius *pacman*)))
     (:sdl-key-x
      (pacman-add-target *pacman* 5))
     (:sdl-key-q
@@ -641,9 +639,9 @@
     (fill-surface *black*)
     (draw-string-solid-* "Lispac" 10 10)
     (draw-string-solid-*
-     (format nil "FPS ~d Speed ~d" (frame-rate) (unit-speed *pacman*))
+    (format nil "FPS ~d Speed ~d" (frame-rate) (unit-speed *pacman*))
                          10 35)
-    (draw-string-solid-* (format nil "Radius ~d" (unit-radius *pacman*))
+    (draw-string-solid-* (format nil "Tile size ~d" *tile-size*)
                          10 60)
     (draw-string-solid-* (format nil ":: Score ~d ::" *score*)
                          (/ *width* 2) 60 :justify :right)
@@ -652,7 +650,7 @@
     (blit-surface panel-surface *default-display*)))
 
 (defun update-pacman ()
-  (with-slots (x y (r radius) speed direction next-direction)
+  (with-slots (x y speed direction next-direction)
       *pacman*
     (with-unit-boundary (*pacman*)
       ;; Print pacman used tiles square if requested
@@ -689,7 +687,7 @@
                  (collect monster)))
 
               ;; No colision
-              ((<= (+ (unit-radius monster) (unit-radius *pacman*))
+              ((<= *tile-size*
                    (distance-* (unit-x monster) (unit-y monster)
                                (unit-x *pacman*) (unit-y *pacman*)))
                (draw monster)
