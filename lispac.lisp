@@ -114,45 +114,6 @@
                    (divisiblep y 4)))))
     board))
 
-(defun board-update-respawn-gradient (board &optional x y)
-  (declare (board board))
-  (with-slots (respawn respawn-gradient) board
-    (when (or x y)
-      (setf respawn (point :x x :y y)))
-    (let ((next-layer (list respawn))
-          this-layer
-          visited)
-      (loop while next-layer
-            for distance = 0 then (1+ distance)
-            do (progn
-                 (setf visited this-layer)
-                 (setf this-layer next-layer)
-                 (nilf next-layer)
-                 (dolist (tile this-layer)
-                   (when (find tile visited :test #'equalp)
-                     (error "alredy visited"))
-                   (let ((x (x tile))
-                         (y (y tile)))
-                     ;; TODO: Clean up.
-
-                     ;; (format t "visiting ~d.~d~%" x y)
-                     ;; (format t " visited ~a~%" visited)
-                     (setf (aref respawn-gradient (x tile) (y tile)) distance)
-                     (loop for x in (list (1- x) x x (1+ x))
-                           for y in (list y (1- y) (1+ y) y)
-                           do (let ((point (point :x x :y y)))
-                                (or (< x 0)
-                                    (< y 0)
-                                    (<= (board-width board) x)
-                                    (<= (board-height board) y)
-                                    (tile board x y)
-                                    (find point visited :test #'equalp)
-                                    (find point next-layer :test #'equalp)
-                                    (find point this-layer :test #'equalp)
-                                    (push point next-layer))))
-                     ;; (format t " pending ~a~%" next-layer)
-                     )))))))
-
 ;; Load the board from a portable bit map.
 
 ;; 0 = way, 1 = wall.
@@ -187,6 +148,53 @@
 (defun board-column-clear-p (x &optional top bottom)
   (board-square-clear-p x (or top 0)
                         x (or bottom (1- (board-height *board*)))))
+
+;;;; Gradients
+
+;; TODO: Write documentation
+(defun board-compute-gradient (board gradient x y)
+  (declare (board board))
+  (let ((next-layer (list (point :x x :y y)))
+        this-layer
+        visited)
+    (loop while next-layer
+          for distance = 0 then (1+ distance)
+          do (progn
+               (setf visited this-layer)
+               (setf this-layer next-layer)
+               (nilf next-layer)
+               (dolist (tile this-layer)
+                 (when (find tile visited :test #'equalp)
+                   (error "alredy visited"))
+                 (let ((x (x tile))
+                       (y (y tile)))
+                   ;; TODO: Clean up.
+
+                   ;; (format t "visiting ~d.~d~%" x y)
+                   ;; (format t " visited ~a~%" visited)
+                   (setf (aref gradient (x tile) (y tile)) distance)
+                   (loop for x in (list (1- x) x x (1+ x))
+                         for y in (list y (1- y) (1+ y) y)
+                         do (let ((point (point :x x :y y)))
+                              (or (< x 0)
+                                  (< y 0)
+                                  (<= (board-width board) x)
+                                  (<= (board-height board) y)
+                                  (tile board x y)
+                                  (find point visited :test #'equalp)
+                                  (find point next-layer :test #'equalp)
+                                  (find point this-layer :test #'equalp)
+                                  (push point next-layer))))
+                   ;; (format t " pending ~a~%" next-layer)
+                   ))))))
+
+;; Update slot `gradient' of `board'
+(defun board-update-respawn-gradient (board &optional x y)
+  (declare (board board))
+  (with-slots (respawn respawn-gradient) board
+    (when (or x y)
+      (setf respawn (point :x x :y y)))
+    (compute-gradient board respawn-gradient x y)))
 
 ;;; Clock
 
