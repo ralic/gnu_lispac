@@ -152,13 +152,14 @@
 ;;;; Gradients
 
 ;; TODO: Write documentation
-(defun board-compute-gradient (board gradient x y)
+(defun board-compute-gradient (board gradient x y &optional max-distance)
   (declare (board board))
   (let ((next-layer (list (point :x x :y y)))
         this-layer
         visited)
     (loop while next-layer
           for distance = 0 then (1+ distance)
+          until (and max-distance (> distance max-distance))
           do (progn
                (setf visited this-layer)
                (setf this-layer next-layer)
