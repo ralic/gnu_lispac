@@ -194,7 +194,7 @@
   (with-slots (respawn respawn-gradient) board
     (when (or x y)
       (setf respawn (point :x x :y y)))
-    (compute-gradient board respawn-gradient x y)))
+    (board-compute-gradient board respawn-gradient x y)))
 
 ;;; Clock
 
