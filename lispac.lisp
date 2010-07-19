@@ -151,6 +151,22 @@
 
 ;;;; Gradients
 
+;; Inside a `nil' block iterate over the neighbors of the tile pointed
+;; by `x' and `y' (Evaluated).  Bind `x-var' and `y-var' (Evaluated)
+;; to the X and Y of each neighbor, when it's "visited".
+(defmacro do-neighbor-tiles (gradient (x-var x) (y-var y) &body body)
+  (with-gensyms (gradient-tmp width height)
+    `(let* ((,gradient-tmp ,gradient)
+            (,width (array-dimension ,gradient-tmp 0))
+            (,height (array-dimension ,gradient-tmp 1)))
+       (loop for ,x-var in (list (1- ,x) ,x ,x (1+ ,x))
+             for ,y-var in (list ,y (1- ,y) (1+ ,y) ,y)
+             do (when (and (<= 0 ,x-var)
+                           (<= 0 ,y-var)
+                           (> ,width ,x-var)
+                           (> ,height ,y-var))
+                  ,@body)))))
+
 ;; TODO: Write documentation
 (defun board-compute-gradient (board gradient x y &optional max-distance)
   (declare (board board))
@@ -164,28 +180,23 @@
                (setf visited this-layer)
                (setf this-layer next-layer)
                (nilf next-layer)
-               (dolist (tile this-layer)
-                 (when (find tile visited :test #'equalp)
+               (dolist (current-tile this-layer)
+                 (when (find current-tile visited :test #'equalp)
                    (error "alredy visited"))
-                 (let ((x (x tile))
-                       (y (y tile)))
+                 (let ((current-x (x current-tile))
+                       (current-y (y current-tile)))
                    ;; TODO: Clean up.
 
                    ;; (format t "visiting ~d.~d~%" x y)
                    ;; (format t " visited ~a~%" visited)
-                   (setf (aref gradient (x tile) (y tile)) distance)
-                   (loop for x in (list (1- x) x x (1+ x))
-                         for y in (list y (1- y) (1+ y) y)
-                         do (let ((point (point :x x :y y)))
-                              (or (< x 0)
-                                  (< y 0)
-                                  (<= (board-width board) x)
-                                  (<= (board-height board) y)
-                                  (tile board x y)
-                                  (find point visited :test #'equalp)
-                                  (find point next-layer :test #'equalp)
-                                  (find point this-layer :test #'equalp)
-                                  (push point next-layer))))
+                   (setf (aref gradient current-x current-y) distance)
+                   (do-neighbor-tiles gradient (x current-x) (y current-y)
+                     (let ((neighbor (point :x x :y y)))
+                       (unless (or (tile board x y)
+                                   (find neighbor visited :test #'equalp)
+                                   (find neighbor next-layer :test #'equalp)
+                                   (find neighbor this-layer :test #'equalp))
+                         (push neighbor next-layer))))
                    ;; (format t " pending ~a~%" next-layer)
                    ))))))
 
