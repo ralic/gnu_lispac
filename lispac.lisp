@@ -415,6 +415,45 @@
                     x)))))
         (move-unit unit (min max-pixels pixels-to-next-tile) direction)))))
 
+;; Move `unit' up to `max-pixels' towards lower-values of the `gradient'
+(defun unit-climb-gradient (unit max-pixels gradient)
+  (flet ((gradient (x y)
+           (aref gradient x y)))
+    (with-unit-boundary (unit)
+      (cond
+        ;; Unit is between two tiles horizontaly
+        ((/= left right)
+         (if (< (gradient left top) (gradient right top))
+             (unit-align unit max-pixels :left)
+             (unit-align unit max-pixels :right)))
+        ;; Unit is between two tiles verticaly
+        ((/= top bottom)
+         (if (< (gradient left top) (gradient left bottom))
+             (unit-align unit max-pixels :up)
+             (unit-align unit max-pixels :down)))
+        ;; Unit is just on one tile
+        (t
+         (let ((current-gradient-value (gradient left top))
+               (rightmost-tile (1- (board-width *board*)))
+               (bottomost-tile (1- (board-height *board*))))
+           ;; Climb to a neighbor tile with lower gradient value.
+           ;; Note that the difference in gradient value should
+           ;; always be 1, so it isn't nessesary to check other
+           ;; neighbors.
+           (cond
+             ((and (< 0 left)
+                   (< (gradient (1- left) top) current-gradient-value))
+              (unit-align unit max-pixels :left))
+             ((and (> rightmost-tile left)
+                   (< (gradient (1+ left) top) current-gradient-value))
+              (unit-align unit max-pixels :right))
+             ((and (< 0 top)
+                   (< (gradient left (1- top)) current-gradient-value))
+              (unit-align unit max-pixels :up))
+             ((and (> bottomost-tile top)
+                   (< (gradient left (1+ top)) current-gradient-value))
+              (unit-align unit max-pixels :down)))))))))
+
 (defun unit-act (unit)
   (declare (unit unit))
   (funcall (unit-controller unit) unit))
@@ -506,43 +545,9 @@
 ;; Move a <<dead>> monster towards the respawn point
 (defun spirit-controller (monster)
   (declare (monster monster))
-  (flet ((gradient (x y)
-           (aref (board-respawn-gradient *board*) x y)))
-    (with-slots (speed) monster
-      (with-unit-boundary (monster)
-        (cond
-          ;; Monster is between two tiles horizontaly
-          ((/= left right)
-           (if (< (gradient left top) (gradient right top))
-               (unit-align monster speed :left)
-               (unit-align monster speed :right)))
-          ;; Monster is between two tiles verticaly
-          ((/= top bottom)
-           (if (< (gradient left top) (gradient left bottom))
-               (unit-align monster speed :up)
-               (unit-align monster speed :down)))
-          ;; Monster is just on one tile
-          (t
-           (let ((current-gradient-value (gradient left top))
-                 (rightmost-tile (1- (board-width *board*)))
-                 (bottomost-tile (1- (board-height *board*))))
-             ;; Climb to a neighbor tile with lower gradient value.
-             ;; Note that the difference in gradient value should
-             ;; always be 1, so it isn't nessesary to check other
-             ;; neighbors.
-             (cond
-               ((and (< 0 left)
-                     (< (gradient (1- left) top) current-gradient-value))
-                (unit-align monster speed :left))
-               ((and (> rightmost-tile left)
-                     (< (gradient (1+ left) top) current-gradient-value))
-                (unit-align monster speed :right))
-               ((and (< 0 top)
-                     (< (gradient left (1- top)) current-gradient-value))
-                (unit-align monster speed :up))
-               ((and (> bottomost-tile top)
-                     (< (gradient left (1+ top)) current-gradient-value))
-                (unit-align monster speed :down))))))))))
+  (unit-climb-gradient monster
+                       (unit-speed monster)
+                       (board-respawn-gradient *board*)))
 
 ;;; Targets
 
