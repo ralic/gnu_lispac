@@ -58,6 +58,11 @@
 (defvar *targets* ())
 (defvar *monsters* ())
 
+(defvar *pacman-gradient-center-x*)
+(defvar *pacman-gradient-center-y*)
+(defvar *pacman-gradient*)
+(defvar *pacman-gradient-max-distance*)
+
 ;;; Board
 
 (defclass board ()
@@ -669,6 +674,33 @@
                          (/ *width* 2) 30 :justify :right)
     (blit-surface panel-surface *default-display*)))
 
+(defun update-pacman-gradient (new-x new-y)
+  ;; Clear
+  (loop with stack
+        for current-tile = nil then (pop stack)
+        for x = *pacman-gradient-center-x* then (x current-tile)
+        for y = *pacman-gradient-center-y* then (y current-tile)
+        do (progn
+             (setf (aref *pacman-gradient* x y) most-positive-fixnum)
+             (do-neighbor-tiles *pacman-gradient* (neighbor-x x) (neighbor-y y)
+               (let ((neighbor (point :x neighbor-x :y neighbor-y)))
+                 (declare (point neighbor))
+                 (unless (or (= (aref *pacman-gradient* neighbor-x neighbor-y)
+                                most-positive-fixnum)
+                             (find neighbor stack :test #'equalp))
+                   (push neighbor stack))))
+             (print stack))
+        while stack)
+  ;; Recompute (Update) gradient
+  (board-compute-gradient *board*
+                          *pacman-gradient*
+                          new-x
+                          new-y
+                          *pacman-gradient-max-distance*)
+  ;; Update variables
+  (setf *pacman-gradient-center-x* new-x)
+  (setf *pacman-gradient-center-y* new-y))
+
 (defun update-pacman ()
   (with-slots (x y speed direction next-direction)
       *pacman*
@@ -682,7 +714,11 @@
                               (1- (* *tile-size* (1+ bottom))))))
           (draw-rectangle pacman-square :color *white*)))
       ;; Do the actual pacman moves
-      (unit-act *pacman*)))
+      (unit-act *pacman*)
+      ;; If nessesary, update gradient
+      (when (or (/= left *pacman-gradient-center-x*)
+                (/= top *pacman-gradient-center-y*))
+        (update-pacman-gradient left top))))
   (draw *pacman*))
 
 ;; Move the monsters and check colisions.
@@ -743,6 +779,17 @@
       (initialise-default-font *font-10x20*)
       (setf *pacman* (make-instance 'pacman
                                     :controller #'standard-controller))
+      (setf *pacman-gradient* (make-array (list (board-width *board*)
+                                                (board-height *board*))
+                                          :initial-element most-positive-fixnum))
+      (with-unit-boundary (*pacman*)
+        (setf *pacman-gradient-center-x* left)
+        (setf *pacman-gradient-center-y* top)
+        (board-compute-gradient *board*
+                                *pacman-gradient*
+                                left
+                                top
+                                *pacman-gradient-max-distance*))
       (with-surface
           (*default-surface* (create-surface *width* *height* :y 100))
         (update-board)
