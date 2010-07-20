@@ -469,6 +469,9 @@
 
 ;;;; Controllers
 
+(defvar *next-direction* :right)
+
+;; Move unit according to keyboard input.
 (defun standard-controller (unit)
   (declare (unit unit))
   (with-slots (x y speed direction) unit
@@ -476,15 +479,23 @@
         (unit-align unit speed direction)
         (setf direction *next-direction*))))
 
-(defvar *next-direction* :right)
+(defmacro define-climber (name gradient climbp)
+  (with-gensyms (unit)
+    `(defun ,name (,unit)
+       (declare (unit ,unit))
+       (unit-climb-gradient ,unit (unit-speed ,unit) ,gradient ,climbp))))
 
 ;; Move a unit towards the respawn point for exaple, an spirit _dead_
 ;; monster
-(defun spirit-controller (unit)
-  (declare (unit unit))
-  (unit-climb-gradient unit
-                       (unit-speed unit)
-                       (board-respawn-gradient *board*)))
+(define-climber spirit-controller (board-respawn-gradient *board*) t)
+
+;; Move a unit towards pacman if Manhattan disatance to it <=
+;; `*pacman-gradient-max-depth*'
+(define-climber pacman-seeker-controller *pacman-gradient* t)
+
+;; Move a unit farther from pacman if Manhattan disatance to it <=
+;; `*pacman-gradient-max-depth*'
+(define-climber flee-from-pacman-controller *pacman-gradient* nil)
 
 ;;;; Pacman
 
