@@ -415,20 +415,21 @@
                     x)))))
         (move-unit unit (min max-pixels pixels-to-next-tile) direction)))))
 
-;; Move `unit' up to `max-pixels' towards lower-values of the `gradient'
-(defun unit-climb-gradient (unit max-pixels gradient)
+;; Move `unit' up to `max-pixels' towards lower-values of the
+;; `gradient' when `climbp' is non-nil, or higher ones otherwise.
+(defun unit-climb-gradient (unit max-pixels gradient &optional (climbp t))
   (flet ((gradient (x y)
            (aref gradient x y)))
     (with-unit-boundary (unit)
       (cond
         ;; Unit is between two tiles horizontaly
         ((/= left right)
-         (if (< (gradient left top) (gradient right top))
+         (if (boolean= climbp (< (gradient left top) (gradient right top)))
              (unit-align unit max-pixels :left)
              (unit-align unit max-pixels :right)))
         ;; Unit is between two tiles verticaly
         ((/= top bottom)
-         (if (< (gradient left top) (gradient left bottom))
+         (if (boolean= climbp (< (gradient left top) (gradient left bottom)))
              (unit-align unit max-pixels :up)
              (unit-align unit max-pixels :down)))
         ;; Unit is just on one tile
@@ -442,16 +443,24 @@
            ;; neighbors.
            (cond
              ((and (< 0 left)
-                   (< (gradient (1- left) top) current-gradient-value))
+                   (if climbp
+                       (< (gradient (1- left) top) current-gradient-value)
+                       (> (gradient (1- left) top) current-gradient-value)))
               (unit-align unit max-pixels :left))
              ((and (> rightmost-tile left)
-                   (< (gradient (1+ left) top) current-gradient-value))
+                   (if climbp
+                       (< (gradient (1+ left) top) current-gradient-value)
+                       (> (gradient (1+ left) top) current-gradient-value)))
               (unit-align unit max-pixels :right))
              ((and (< 0 top)
-                   (< (gradient left (1- top)) current-gradient-value))
+                   (if climbp
+                       (< (gradient left (1- top)) current-gradient-value)
+                       (> (gradient left (1- top)) current-gradient-value)))
               (unit-align unit max-pixels :up))
              ((and (> bottomost-tile top)
-                   (< (gradient left (1+ top)) current-gradient-value))
+                   (if climbp
+                       (< (gradient left (1+ top)) current-gradient-value)
+                       (> (gradient left (1+ top)) current-gradient-value)))
               (unit-align unit max-pixels :down)))))))))
 
 (defun unit-act (unit)
