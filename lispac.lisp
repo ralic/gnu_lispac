@@ -762,10 +762,12 @@
                (let ((respawn-x (x (board-respawn *board*)))
                      (respawn-y (y (board-respawn *board*))))
                  (with-unit-boundary (monster)
+                   ;; Did monster reached the respawn point?
                    (when (and (= respawn-x left right)
                               (= respawn-y top bottom))
-                     ;; TODO: Set monster controller to standard
-                     ;; monster controller, when implemented.
+                     ;; Respawn the monster
+                     (setf (unit-controller monster) #'hostile-monster-controller)
+                     (setf (crazyp monster) t)
                      (setf (livep monster) t)))
                  (draw monster)
                  (collect monster)))
