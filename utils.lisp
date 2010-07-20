@@ -81,6 +81,12 @@
   `(loop for ,var from ,min to ,max by ,step
          do (progn ,@body)))
 
+;;; Compare 2 generalized booleans.
+(defun boolean= (a b)
+  (if a
+      b
+      (not b)))
+
 (defun divisiblep (m n)
   (declare (integer m n))
   (zerop (mod m n)))
