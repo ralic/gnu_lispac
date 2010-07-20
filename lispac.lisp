@@ -551,14 +551,14 @@
 ;;;; Monster
 
 (defclass monster (unit)
-  ((crazyp
-    :initarg :crazyp
+  ((hostilep
+    :initarg :hostilep
     :type boolean
-    :accessor crazyp)
+    :accessor monster-hostilep)
    (livep
     :initarg :livep
     :type boolean
-    :accessor livep)
+    :accessor monster-livep)
    ;; This is unrelated to pacman-direction
    (direction
     :initarg :direction
@@ -758,7 +758,7 @@
             (unit-act monster)
             (cond
               ;; Monster is in <<spirit>> form
-              ((not (livep monster))
+              ((not (monster-livep monster))
                (let ((respawn-x (x (board-respawn *board*)))
                      (respawn-y (y (board-respawn *board*))))
                  (with-unit-boundary (monster)
@@ -767,8 +767,8 @@
                               (= respawn-y top bottom))
                      ;; Respawn the monster
                      (setf (unit-controller monster) #'hostile-monster-controller)
-                     (setf (crazyp monster) t)
-                     (setf (livep monster) t)))
+                     (setf (monster-hostilep monster) t)
+                     (setf (monster-livep monster) t)))
                  (draw monster)
                  (collect monster)))
 
@@ -780,7 +780,7 @@
                (collect monster))
 
               ;; Colision with hostile monster
-              ((crazyp monster)
+              ((monster-hostilep monster)
 
                ;; TODO: Put something more friendly here
                (error "Monster ate pacman")))))))
