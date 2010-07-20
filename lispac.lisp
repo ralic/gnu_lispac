@@ -467,6 +467,25 @@
   (declare (unit unit))
   (funcall (unit-controller unit) unit))
 
+;;;; Controllers
+
+(defun standard-controller (unit)
+  (declare (unit unit))
+  (with-slots (x y speed direction) unit
+    (if (zerop (move-unit unit speed *next-direction*))
+        (unit-align unit speed direction)
+        (setf direction *next-direction*))))
+
+(defvar *next-direction* :right)
+
+;; Move a unit towards the respawn point for exaple, an spirit _dead_
+;; monster
+(defun spirit-controller (unit)
+  (declare (unit unit))
+  (unit-climb-gradient unit
+                       (unit-speed unit)
+                       (board-respawn-gradient *board*)))
+
 ;;;; Pacman
 
 (defclass pacman (unit)
@@ -518,15 +537,6 @@
          (draw-filled-circle-* x (- y (round r 2)) (round r 5)
                                :color *black*))))))
 
-(defvar *next-direction* :right)
-
-(defun standard-controller (unit)
-  (declare (unit unit))
-  (with-slots (x y speed direction) unit
-    (if (zerop (move-unit unit speed *next-direction*))
-        (unit-align unit speed direction)
-        (setf direction *next-direction*))))
-
 ;;;; Monster
 
 (defclass monster (unit)
@@ -550,13 +560,6 @@
       (draw-filled-circle-* x y r :color *orange*)
       (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)
       )))
-
-;; Move a <<dead>> monster towards the respawn point
-(defun spirit-controller (monster)
-  (declare (monster monster))
-  (unit-climb-gradient monster
-                       (unit-speed monster)
-                       (board-respawn-gradient *board*)))
 
 ;;; Targets
 
