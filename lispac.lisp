@@ -852,6 +852,8 @@
   (values))
 
 ;; Local Variables:
+;; mode: Lisp
+;; outline-regexp: ";;;+"
 ;; indent-tabs-mode: nil
 ;; coding: us-ascii-unix
 ;; End:
