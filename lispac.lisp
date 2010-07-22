@@ -63,6 +63,10 @@
 (defvar *pacman-gradient*)
 (defvar *pacman-gradient-max-distance*)
 
+;; Default ticks monsters will be vulnerable when pacman eat a super
+;; target.
+(defvar *monster-vulnerable-ticks*)
+
 ;;; Board
 
 (defclass board ()
@@ -499,26 +503,71 @@
 ;;;; Monster
 
 (defclass monster (unit)
-  ((hostilep
-    :initarg :hostilep
-    :type boolean
-    :accessor monster-hostilep)
-   (livep
+  ((livep
     :initarg :livep
     :type boolean
     :accessor monster-livep)
+   ;; Monster will be vulnerable until the given tick (Noninclusive).
+   (vulnerable-until
+    :initarg :vulnerable-until
+    :type fixnum
+    :initform 0
+    :accessor monster-vulnerable-until)
    ;; This is unrelated to pacman-direction
    (direction
     :initarg :direction
     :type (member :up :down :left :right)
     :accessor monster-direction)))
 
+(defmethod monster-hostilep ((monster monster))
+  (>= (clock-ticks *clock*) (monster-vulnerable-until monster)))
+
+(defmethod monster-vulnerablep ((monster monster))
+  (< (clock-ticks *clock*) (monster-vulnerable-until monster)))
+
+(defmethod monster-spiritp ((monster monster))
+  (not (monster-livep monster)))
+
+;; Called for example, when pacman eat a super target.
+(defgeneric monster-make-vulnerable (monster))
+
+;; Turn the monster into a "spirit" (Dead and moving to the respawn
+;; point).  Called for example, when pacman eat the monster.
+(defgeneric monster-kill (monster))
+
+;; Restore standard monster behaviour.
+(defgeneric monster-restore (monster))
+
+(defmethod monster-make-vulnerable ((monster monster))
+  (setf (unit-controller monster) #'flee-from-pacman-controller)
+  (setf (monster-vulnerable-until monster)
+        (+ (clock-ticks *clock*) *monster-vulnerable-ticks*)))
+
+(defmethod monster-kill ((monster monster))
+  (setf (monster-vulnerable-until monster) (clock-ticks *clock*))
+  (nilf (monster-livep monster))
+  (setf (unit-controller monster) #'spirit-controller))
+
+(defmethod monster-restore ((monster monster))
+  (setf (monster-vulnerable-until monster) (clock-ticks *clock*))
+  (tf (monster-livep monster))
+  (setf (unit-controller monster) #'pacman-seeker-controller))
+
 (defmethod draw ((monster monster))
   (with-slots (x y) monster
-    (let ((r (/ *tile-size* 2)))
-      (draw-filled-circle-* x y r :color *orange*)
-      (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color *blue*)
-      )))
+    (let ((background (cond
+                        ((monster-spiritp monster)
+                         (color :r 127 :g 127 :b 127))
+                        ((monster-vulnerablep monster)
+                         *cyan*)
+                        ((monster-hostilep monster)
+                         *red*)))
+          (foreground (if (monster-vulnerablep monster)
+                          *green*
+                          *blue*)))
+      (let ((r (/ *tile-size* 2)))
+        (draw-filled-circle-* x y r :color background)
+        (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color foreground)))))
 
 ;;; Targets
 
@@ -537,23 +586,29 @@
     :type fixnum
     :accessor target-y
     :initform 0
-    :initarg :y)))
+    :initarg :y)
+   (superp
+    :type boolean
+    :accessor target-superp
+    :initform nil
+    :initarg :superp)))
 
-(defun add-target (count x y)
+(defun add-target (count x y superp)
   (declare (integer count x y))
-  (push (make-instance 'target :count count :x x :y y) *targets*))
+  (push (make-instance 'target :count count :x x :y y :superp superp)
+        *targets*))
 
-(defun pacman-add-target (pac count)
+(defun pacman-add-target (pac count &optional superp)
   (declare (pacman pac)
            (integer count))
   (with-slots (x y direction)
       pac
     (let ((r (/ *tile-size* 2)))
       (ecase direction
-        (:up (add-target count x (+ y r)))
-        (:down (add-target count x (- y r)))
-        (:left (add-target count (+ x r) y))
-        (:right (add-target count (- x r) y))))))
+        (:up (add-target count x (+ y r) superp))
+        (:down (add-target count x (- y r) superp))
+        (:left (add-target count (+ x r) y superp))
+        (:right (add-target count (- x r) y superp))))))
 
 (defun pacman-eat-target-p (target)
   (declare (target target))
@@ -562,8 +617,9 @@
      (+ (/ *tile-size* 2) *target-radius*)))
 
 (defmethod draw ((target target))
-  (with-slots (x y) target
-    (draw-filled-circle-* x y *target-radius* :color *orange*)))
+  (with-slots (x y superp) target
+    (let ((color  (if superp *red* *orange*)))
+      (draw-filled-circle-* x y *target-radius* :color color))))
 
 ;;; Game loop
 
@@ -597,6 +653,8 @@
      (decf (unit-speed *pacman*)))
     (:sdl-key-x
      (pacman-add-target *pacman* 5))
+    (:sdl-key-y
+     (pacman-add-target *pacman* 5 t))
     (:sdl-key-q
      (incf *target-radius*))
     (:sdl-key-w
@@ -626,12 +684,21 @@
                         :surface surface
                         :color color)))))))
 
+(defun make-alive-monsters-vulnerable ()
+  (dolist (monster *monsters*)
+    (unless (monster-spiritp monster)
+      (monster-make-vulnerable monster))))
+
 (defun update-targets ()
   (loop with new-targets = nil
         for target in *targets*
         do (cond
              ((pacman-eat-target-p target)
-              (incf *score*))
+              (print 'ate)
+              (incf *score*)
+              (when (target-superp target)
+                ;; Make monsters vulnerable
+                (make-alive-monsters-vulnerable)))
              (t
               (draw target)
               (push target new-targets)))
@@ -701,39 +768,38 @@
 
 ;; Move the monsters and check colisions.
 (defun update-monsters ()
-  (setf *monsters*
-        (with-collecting
-          (dolist (monster *monsters*)
-            (declare (monster monster))
-            (unit-act monster)
-            (cond
-              ;; Monster is in <<spirit>> form
-              ((not (monster-livep monster))
-               (let ((respawn-x (x (board-respawn *board*)))
-                     (respawn-y (y (board-respawn *board*))))
-                 (with-unit-boundary (monster)
-                   ;; Did monster reached the respawn point?
-                   (when (and (= respawn-x left right)
-                              (= respawn-y top bottom))
-                     ;; Respawn the monster
-                     (setf (unit-controller monster) #'hostile-monster-controller)
-                     (setf (monster-hostilep monster) t)
-                     (setf (monster-livep monster) t)))
-                 (draw monster)
-                 (collect monster)))
+  (dolist (monster *monsters*)
+    (declare (monster monster))
+    (unit-act monster)
+    (when (= (monster-vulnerable-until monster) (clock-ticks *clock*))
+      (monster-restore monster))
+    (cond
+      ;; Monster is in <<spirit>> form
+      ((not (monster-livep monster))
+       (let ((respawn-x (x (board-respawn *board*)))
+             (respawn-y (y (board-respawn *board*))))
+         (with-unit-boundary (monster)
+           ;; Did monster reached the respawn point?
+           (when (and (= respawn-x left right)
+                      (= respawn-y top bottom))
+             (monster-restore monster)))
+         (draw monster)))
 
-              ;; No colision
-              ((<= *tile-size*
-                   (distance-* (unit-x monster) (unit-y monster)
-                               (unit-x *pacman*) (unit-y *pacman*)))
-               (draw monster)
-               (collect monster))
+      ;; No colision
+      ((<= *tile-size*
+           (distance-* (unit-x monster) (unit-y monster)
+                       (unit-x *pacman*) (unit-y *pacman*)))
+       (draw monster))
 
-              ;; Colision with hostile monster
-              ((monster-hostilep monster)
+      ;; Colision with hostile monster
+      ((monster-hostilep monster)
 
-               ;; TODO: Put something more friendly here
-               (error "Monster ate pacman")))))))
+       ;; TODO: Put something more friendly here
+       (error "Monster ate pacman"))
+
+      ;; Colision with vulnerable monster
+      ((monster-vulnerablep monster)
+       (monster-kill monster)))))
 
 (defun update ()
   (blit-surface (board-surface *board*))
