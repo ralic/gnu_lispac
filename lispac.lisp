@@ -559,7 +559,7 @@
   (declare (target target))
   (< (distance-* (unit-x *pacman*) (unit-y *pacman*)
                  (target-x target) (target-y target))
-     (+ *tile-size* *target-radius*)))
+     (+ (/ *tile-size* 2) *target-radius*)))
 
 (defmethod draw ((target target))
   (with-slots (x y) target
