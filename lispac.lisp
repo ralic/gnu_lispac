@@ -215,76 +215,24 @@
 
 ;;; Clock
 
-(defclass game-clock ()
-  ((ticks
+(defclass clock ()
+  ((ticks                               ; (From the start).
     :type fixnum
-    :accessor game-clock-ticks
+    :accessor clock-ticks
     :initform 0
-    :initarg :t)
-   (seconds
-    :type fixnum
-    :accessor game-clock-seconds
-    :initform 0
-    :initarg :s)
-   (minutes
-    :type fixnum
-    :accessor game-clock-minutes
-    :initform 0
-    :initarg :m)
-   (hours
-    :type fixnum
-    :accessor game-clock-hours
-    :initform 0
-    :initarg :h)
-   (stop
-    :accessor game-clock-stop
-    :initform nil)))
+    :initarg :t)))
 
-(defvar *clock* (make-instance 'game-clock))
-(defvar *user-clocks* (make-hash-table))
+(defvar *clock* (make-instance 'clock))
 
-(defun* clock-toggle ((game-clock clock))
-  (setf (game-clock-stop clock) (not (game-clock-stop clock))))
+(defmethod clock-reset ((clock clock))
+  (zerof (clock-ticks clock)))
 
-(defun* clock-tick ((game-clock clock))
-  (unless (game-clock-stop clock)
-    (incf (game-clock-ticks clock))
-    (if (= (game-clock-ticks clock) *fps*)
-        (progn (incf (game-clock-seconds clock))
-               (if (= (game-clock-seconds clock) 60)
-                   (progn (incf (game-clock-minutes clock))
-                          (if (= (game-clock-minutes clock) 60)
-                              (progn (incf (game-clock-hours clock))
-                                     (zerof (game-clock-minutes clock))))
-                          (zerof (game-clock-seconds clock))))
-               (zerof (game-clock-ticks clock))))))
-
-(defun* add-clock ((string name))
-  (setf (gethash name *user-clocks*) (make-instance 'game-clock)))
-
-(defun* get-clock ((string name))
-  (gethash name *user-clocks*))
-
-(defun* delete-clock ((string name))
-  (setf (gethash name *user-clocks*) nil))
-
-(defun clocks-tick ()
-  (loop for i being the hash-value of *user-clocks*
-       do (clock-tick i)))
-
-(defun* format-clock ((game-clock clock))
-  (with-slots (ticks seconds minutes hours)
-      clock
-  (format nil "~d:~d:~d - ~d" hours minutes seconds ticks)))
-
-(defmacro with-timer ((name var func) &body body)
-  (add-clock name)
-  `(let ((,var ,(get-clock name)))
-     ,func
-     (clock-toggle ,var)
-     (with-slots (ticks seconds minutes hours)
-         ,var
-       ,@body)))
+(defmethod format-clock ((clock clock))
+  (let* ((ticks (clock-ticks clock))
+         (seconds (floor ticks *fps*))
+         (minutes (mod (truncate seconds 60) 60))
+         (hours (truncate seconds 3600)))
+    (format nil "~d:~2,'0d:~2,'0d - ~6,'0d" hours minutes seconds ticks)))
 
 ;;; Units
 
@@ -514,7 +462,7 @@
 (defmethod draw ((pacman pacman))
   (with-slots (x y direction)
       pacman
-    (let ((a (round (* 60 (abs (cos (* (/ (game-clock-ticks *clock*)
+    (let ((a (round (* 60 (abs (cos (* (/ (clock-ticks *clock*)
                                           *fps*) 2 pi))))))
           (r (/ *tile-size* 2)))
       (draw-filled-circle-* x y r :color *yellow* :stroke-color *background*)
@@ -651,9 +599,7 @@
      (decf *target-radius*))
     (:sdl-key-t
      (setf (unit-x *pacman*) (/ *width* 2))
-     (setf (unit-y *pacman*) (/ (- *height* 100) 2)))
-    (:sdl-key-c
-     (clock-toggle *clock*))))
+     (setf (unit-y *pacman*) (/ (- *height* 100) 2)))))
 
 (defun update-board ()
   (with-slots (surface respawn-gradient) *board*
@@ -787,8 +733,7 @@
 
 (defun update ()
   (blit-surface (board-surface *board*))
-  (clock-tick *clock*)
-  (clocks-tick)
+  (incf (clock-ticks *clock*))
   (update-monsters)
   (update-pacman)
   (update-state)
