@@ -185,6 +185,10 @@
 (defmacro nilf (&rest places)
   `(multiple-setf nil ,@places))
 
+;; Set places to t.
+(defmacro tf (&rest places)
+  `(multiple-setf t ,@places))
+
 
 ;;; Portable bit map parser
 
