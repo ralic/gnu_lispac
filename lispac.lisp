@@ -539,10 +539,13 @@
     :initform 0
     :initarg :y)))
 
-(defun* add-target ((integer count x y))
+(defun add-target (count x y)
+  (declare (integer count x y))
   (push (make-instance 'target :count count :x x :y y) *targets*))
 
-(defun* pacman-add-target ((pacman pac) (integer count))
+(defun pacman-add-target (pac count)
+  (declare (pacman pac)
+           (integer count))
   (with-slots (x y direction)
       pac
     (let ((r (/ *tile-size* 2)))
@@ -552,7 +555,8 @@
         (:left (add-target count (+ x r) y))
         (:right (add-target count (- x r) y))))))
 
-(defun* pacman-eat-target-p ((target target))
+(defun pacman-eat-target-p (target)
+  (declare (target target))
   (< (distance-* (unit-x *pacman*) (unit-y *pacman*)
                  (target-x target) (target-y target))
      (+ *tile-size* *target-radius*)))
