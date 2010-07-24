@@ -6,7 +6,7 @@
 
 ;; This file is part of lispac.
 
-;; with-gensyms and with-collecting are from
+;; with-gensyms and with-collecting are from cl-icalendar.
 
 ;; lispac is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
