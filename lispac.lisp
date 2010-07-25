@@ -46,10 +46,10 @@
 (defvar *board*)
 
 ;; Width of the frame in pixels
-(defvar *width*  600)
+(defvar *width*)
 
 ;; Height of the frame in pixels
-(defvar *height* 400)
+(defvar *height*)
 
 (defvar *tile-size* 12)
 
@@ -818,7 +818,9 @@
 ;; non-trivial-map.  The default one contains no walls at all.
 (defun run-and-wait ()
   (with-init (sdl-init-video)
-    (let ((screen (window *width* (+ *height* 100) :title-caption "Lispac")))
+    (let* ((*width* (* *tile-size* (board-width *board*)))
+           (*height* (* *tile-size* (board-height *board*)))
+           (screen (window *width* (+ *height* 100) :title-caption "Lispac")))
       (setf (frame-rate) *fps*)
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
