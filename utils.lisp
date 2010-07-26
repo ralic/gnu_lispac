@@ -272,7 +272,7 @@
            (dotimes (,x ,width)
              (when (divisiblep ,x 8)
                (setf ,byte (read-byte ,stream)))
-             (let ((,pixel (logand 1 (ash ,byte (- (mod ,x 8) 8)))))
+             (let ((,pixel (logand 1 (ash ,byte (- (mod ,x 8) 7)))))
                (declare (bit ,pixel))
                ,@body)))
          ,@at-row-end))))
