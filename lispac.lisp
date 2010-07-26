@@ -831,6 +831,7 @@
             (make-array (list (board-width *board*) (board-height *board*))
                         :initial-element most-positive-fixnum))
       (with-unit-boundary (*pacman*)
+        (declare (ignore right bottom))
         (setf *pacman-gradient-center-x* left)
         (setf *pacman-gradient-center-y* top)
         (board-compute-gradient *board*
