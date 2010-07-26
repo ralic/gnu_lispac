@@ -671,7 +671,7 @@
                                     (* *tile-size* height)))
       (dotimes (y height)
         (dotimes (x width)
-          (let* ((gradient-value (* 5 (aref respawn-gradient x y)))
+          (let* ((gradient-value (min 255 (* 5 (aref respawn-gradient x y))))
                  (color (if (tile *board* x y)
                             *red*
                             (if *print-respawn-gradient*
@@ -824,11 +824,12 @@
       (setf (frame-rate) *fps*)
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
-      (setf *pacman* (make-instance 'pacman
-                                    :controller #'standard-controller))
-      (setf *pacman-gradient* (make-array (list (board-width *board*)
-                                                (board-height *board*))
-                                          :initial-element most-positive-fixnum))
+      (setf *pacman*
+            (make-instance 'pacman
+                           :controller #'standard-controller))
+      (setf *pacman-gradient*
+            (make-array (list (board-width *board*) (board-height *board*))
+                        :initial-element most-positive-fixnum))
       (with-unit-boundary (*pacman*)
         (setf *pacman-gradient-center-x* left)
         (setf *pacman-gradient-center-y* top)
