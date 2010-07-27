@@ -147,42 +147,41 @@
                            (not (aref ,tiles ,x-var ,y-var)))
                   ,@body)))))
 
-;;;; Gradients
-
 ;; TODO: Write documentation
-(defun board-compute-gradient (board gradient x y &optional max-distance)
-  (declare (board board))
-  (let ((next-layer (list (point :x x :y y)))
+(defun board-map-connected-tiles (function board x y &optional max-distance)
+  (declare (function function)
+           (board board)
+           (fixnum x y))
+  (let ((next-layer (list (vector x y)))
         this-layer
         visited)
     (loop while next-layer
           for distance = 0 then (1+ distance)
           until (and max-distance (> distance max-distance))
           do (progn
-               (setf visited this-layer)
-               (setf this-layer next-layer)
-               (nilf next-layer)
+               (shiftf visited this-layer next-layer nil)
                (dolist (current-tile this-layer)
-                 (when (find current-tile visited :test #'equalp)
-                   (error "alredy visited"))
                  (let ((current-x (x current-tile))
                        (current-y (y current-tile)))
-                   ;; TODO: Clean up.
-
-                   ;; (format t "visiting ~d.~d~%" x y)
-                   ;; (format t " visited ~a~%" visited)
-                   (setf (aref gradient current-x current-y) distance)
+                   (funcall function current-x current-y distance)
                    (do-neighbor-tiles
                        (board-tiles board)
                        (x current-x)
                        (y current-y)
-                     (let ((neighbor (point :x x :y y)))
-                       (unless (or (find neighbor visited :test #'equalp)
-                                   (find neighbor next-layer :test #'equalp)
-                                   (find neighbor this-layer :test #'equalp))
-                         (push neighbor next-layer))))
-                   ;; (format t " pending ~a~%" next-layer)
-                   ))))))
+                     (let ((neighbor (vector x y)))
+                       (unless (or (find neighbor visited :test #'point=)
+                                   (find neighbor next-layer :test #'point=)
+                                   (find neighbor this-layer :test #'point=))
+                         (push neighbor next-layer))))))))))
+
+;;;; Gradients
+
+;; TODO: Write documentation
+(defun board-compute-gradient (board gradient x y &optional max-distance)
+  (declare (board board))
+  (let ((function (lambda (x y distance)
+          (setf (aref gradient x y) distance))))
+    (board-map-connected-tiles function board x y max-distance)))
 
 ;; Update slot `gradient' of `board'
 (defun board-update-respawn-gradient (board &optional x y)

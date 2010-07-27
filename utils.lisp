@@ -87,6 +87,11 @@
       b
       (not b)))
 
+(defun point= (a b)
+  (declare ((vector integer) a b))
+  (and (= (elt a 0) (elt b 0))
+       (= (elt a 1) (elt b 1))))
+
 (defun divisiblep (m n)
   (declare (integer m n))
   (zerop (mod m n)))
