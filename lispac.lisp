@@ -114,34 +114,6 @@
   (declare (board board))
   (array-dimension (board-tiles board) 1))
 
-(defun generate-dumb-board (width height)
-  (let ((board (make-board width height)))
-    (dotimes (x width)
-      (dotimes (y height)
-        (setf (tile board x y)
-              (and (divisiblep x 4)
-                   (divisiblep y 4)))))
-    board))
-
-;; Load the board from a portable bit map.
-
-;; 0 = way, 1 = wall.
-(defun load-board-from-pbm (stream)
-  (let* ((dimensions (read-pbm-header stream))
-         (width (elt dimensions 0))
-         (height (elt dimensions 1))
-         (board (make-board width height)))
-    (do-pbm-pixels
-        (pixel)
-        (dimensions x y)
-        stream
-      (setf (tile board x y) (= 1 pixel)))
-    board))
-
-(defun load-board-from-pbm-file (file)
-  (with-open-file (s file :element-type '(unsigned-byte 8))
-    (load-board-from-pbm s)))
-
 (defun board-square-clear-p (left top right bottom)
   (block function
     (dorange (x left right)
@@ -157,8 +129,6 @@
 (defun board-column-clear-p (x &optional top bottom)
   (board-square-clear-p x (or top 0)
                         x (or bottom (1- (board-height *board*)))))
-
-;;;; Gradients
 
 ;; Inside a `nil' block iterate over the neighbors of the tile pointed
 ;; by `x' and `y' (Evaluated).  Bind `x-var' and `y-var' (Evaluated)
@@ -176,6 +146,8 @@
                            (> ,height ,y-var)
                            (not (aref ,tiles ,x-var ,y-var)))
                   ,@body)))))
+
+;;;; Gradients
 
 ;; TODO: Write documentation
 (defun board-compute-gradient (board gradient x y &optional max-distance)
@@ -219,6 +191,36 @@
     (when (or x y)
       (setf respawn (point :x x :y y)))
     (board-compute-gradient board respawn-gradient x y)))
+
+;;;; Generation and loading
+
+(defun generate-dumb-board (width height)
+  (let ((board (make-board width height)))
+    (dotimes (x width)
+      (dotimes (y height)
+        (setf (tile board x y)
+              (and (divisiblep x 4)
+                   (divisiblep y 4)))))
+    board))
+
+;; Load the board from a portable bit map.
+
+;; 0 = way, 1 = wall.
+(defun load-board-from-pbm (stream)
+  (let* ((dimensions (read-pbm-header stream))
+         (width (elt dimensions 0))
+         (height (elt dimensions 1))
+         (board (make-board width height)))
+    (do-pbm-pixels
+        (pixel)
+        (dimensions x y)
+        stream
+      (setf (tile board x y) (= 1 pixel)))
+    board))
+
+(defun load-board-from-pbm-file (file)
+  (with-open-file (s file :element-type '(unsigned-byte 8))
+    (load-board-from-pbm s)))
 
 ;;; Clock
 
