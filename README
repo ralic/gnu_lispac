@@ -1,0 +1,10 @@
+COPYRIGHT AND LICENSE INFORMATION FOR BOARD FILES
+
+* The following boards are part of lispac.  All are licensed under the
+  GNU General Public License version 3 (see COPYING) or later.  The
+  pbm files contain copyright and license information, but it is
+  reproduced here for convenience.
+
+File: lambda.pbm
+  Author: Mario Castelan Castro
+  Copyright (C) 2010  Mario Castelan Castro
