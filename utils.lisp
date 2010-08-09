@@ -113,6 +113,20 @@
                (error "Found a non-digit: ~a" char))
         finally (return result)))
 
+(defun split-string (string &optional (separators " ") (omit-nulls t))
+  (declare (type string string))
+  (flet ((separator-p (char)
+           (etypecase separators
+             (character (char= char separators))
+             (sequence  (find char separators))
+             (function  (funcall separators char)))))
+    (loop for start = 0 then (1+ end)
+          for end = (position-if #'separator-p string :start start)
+          as seq = (subseq string start end)
+          unless (and omit-nulls (string= seq ""))
+            collect seq
+          while end)))
+
 ;;; Read a single byte and compare againsing the given value, return t
 ;;; if and only if they do *not* match.
 (defun read-and-compare (stream value &optional (test #'eql))
