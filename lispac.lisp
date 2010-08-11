@@ -174,6 +174,19 @@
                                    (find neighbor this-layer :test #'point=))
                          (push neighbor next-layer))))))))))
 
+;; Return the count of neighbors non-wall tiles.
+;; 0 for a isolated tile (Isolated vertex).
+;; 1 for a dead-end
+;; 2 for a corridor
+;; 3 and 4 for intersections.
+(defun tile-degree (tiles x y)
+  (let ((degree 0))
+    (declare (fixnum degree))
+    (do-neighbor-tiles tiles (i x) (j y)
+      (unless (aref tiles i j)
+        (incf degree)))
+    degree))
+
 ;;;; Gradients
 
 ;; TODO: Write documentation
