@@ -187,6 +187,10 @@
         (incf degree)))
     degree))
 
+(defun adjacentp (ax ay bx by)
+  (declare (fixnum ax ay bx by))
+  (= 1 (+ (abs (- ax bx)) (abs (- ay by)))))
+
 ;;;; Gradients
 
 ;; TODO: Write documentation
