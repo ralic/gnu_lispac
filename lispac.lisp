@@ -208,6 +208,59 @@
       (setf respawn (point :x x :y y)))
     (board-compute-gradient board respawn-gradient x y)))
 
+;;;; Waypoints.
+
+;; Waypoints provide an alternative to raw gradients.  The waypoint
+;; graph is an abstract representation of the board as a graph.  Every
+;; edge represents a corridor and every vertex represents the
+;; intersections.
+
+;; Regarding waypoints there is a vertex in every intersection (Tiles
+;; with 1, 3 or 4 neighbors).
+(defstruct (vertex (:constructor make-vertex (x y)))
+  x
+  y
+  edges)
+
+;; Edges are directed (One-way).  Only the incident vertex is pointed.
+(defstruct (edge (:constructor make-edge (vertex weight &optional path)))
+  vertex
+  weight
+  path)
+
+;; TODO: Write documentation
+(defstruct (explorer (:constructor %make-explorer (parent-x parent-y
+                                                   current-x current-y
+                                                   tiles)))
+  tiles
+  parent-x
+  parent-y
+  current-x
+  current-y)
+
+;; Should a waypoint be in this tile?.
+(defun waypointp (tiles x y)
+  (/= (tile-degree tiles x y) 2))
+
+;; In a corridor, advance to the next tile.
+(defun explorer-step (explorer)
+  (declare (explorer explorer))
+  (with-slots (tiles parent-x parent-y current-x current-y) explorer
+    (do-neighbor-tiles tiles (neighbor-x current-x) (neighbor-y current-y)
+      (unless (and (= neighbor-x parent-x)
+                   (= neighbor-y parent-y))
+        (shiftf parent-x current-x neighbor-x)
+        (shiftf parent-y current-y neighbor-y)
+        ;; Don't visit other neighbors.
+        (return-from explorer-step t)))))
+
+(defun explorer-explore-to-waypoint (explorer)
+  (declare (explorer explorer))
+  (with-slots (tiles current-x current-y) explorer
+    (loop until (waypointp tiles current-x current-y)
+          do (explorer-step explorer))
+    (values current-x current-y)))
+
 ;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
