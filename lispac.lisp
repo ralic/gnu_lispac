@@ -229,9 +229,11 @@
   path)
 
 ;; TODO: Write documentation
-(defstruct (explorer (:constructor %make-explorer (parent-x parent-y
-                                                   current-x current-y
-                                                   tiles)))
+(defstruct (explorer (:constructor make-explorer (parent-x
+                                                  parent-y
+                                                  current-x
+                                                  current-y
+                                                  tiles)))
   tiles
   parent-x
   parent-y
