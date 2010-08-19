@@ -1,37 +1,39 @@
-;;; lispac.lisp
+;;;; lispac.lisp
 
-;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
-;; Copyrigth (C) 2010 Mario Castelan Castro <marioxcc>
+;;;; License
 
-;; Special thanks to a _not_ anonymous for us, but for everybody else,
-;; who wrote and donated the base of lispac.
+;;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
+;;; Copyrigth (C) 2010 Mario Castelan Castro <marioxcc>
 
-;; This file is part of lispac.
+;;; Special thanks to a _not_ anonymous for us, but for everybody else,
+;;; who wrote and donated the base of lispac.
 
-;; lispac is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;;; This file is part of lispac.
 
-;; lispac is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;;; lispac is free software: you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation, either version 3 of the License, or
+;;; (at your option) any later version.
 
-;; You should have received a copy of the GNU General Public License
-;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
+;;; lispac is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+
+;;; You should have received a copy of the GNU General Public License
+;;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 
-;;; Code:
+;;;; Package
 
 (in-package :lispac)
 
-;;; Game settings
+;;;; Game settings
 
 (defvar *fps* 60)
 (defvar *score* 0)
 
-;;;; Display
+;;;;; Display
 
 (defvar *background* *black*)
 
@@ -67,7 +69,8 @@
 ;; target.
 (defvar *monster-vulnerable-ticks*)
 
-;;; Board
+
+;;;; Board
 
 (defclass board ()
   ((tiles
@@ -191,7 +194,7 @@
   (declare (fixnum ax ay bx by))
   (= 1 (+ (abs (- ax bx)) (abs (- ay by)))))
 
-;;;; Gradients
+;;;;; Gradients
 
 ;; TODO: Write documentation
 (defun board-compute-gradient (board gradient x y &optional max-distance)
@@ -208,12 +211,12 @@
       (setf respawn (point :x x :y y)))
     (board-compute-gradient board respawn-gradient x y)))
 
-;;;; Waypoints.
+;;;;; Waypoints.
 
-;; Waypoints provide an alternative to raw gradients.  The waypoint
-;; graph is an abstract representation of the board as a graph.  Every
-;; edge represents a corridor and every vertex represents the
-;; intersections.
+;;; Waypoints provide an alternative to raw gradients.  The waypoint
+;;; graph is an abstract representation of the board as a graph.
+;;; Every edge represents a corridor and every vertex represents the
+;;; intersections.
 
 ;; Regarding waypoints there is a vertex in every intersection (Tiles
 ;; with 1, 3 or 4 neighbors).
@@ -279,7 +282,7 @@
                            ,board
                            ,x ,y))
 
-;;;; Generation and loading
+;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
   (let ((board (make-board width height)))
@@ -309,7 +312,8 @@
   (with-open-file (s file :element-type '(unsigned-byte 8))
     (load-board-from-pbm s)))
 
-;;; Clock
+
+;;;; Clock
 
 (defclass clock ()
   ((ticks                               ; (From the start).
@@ -330,7 +334,8 @@
          (hours (truncate seconds 3600)))
     (format nil "~d:~2,'0d:~2,'0d - ~6,'0d" hours minutes seconds ticks)))
 
-;;; Units
+
+;;;; Units
 
 (defclass unit ()
   ((x
@@ -373,6 +378,8 @@
                   (,right (floor (+ ,x ,r -1) *tile-size*))
                   (,bottom (floor (+ ,y ,r -1) *tile-size*)))
              ,@body))))))
+
+;;;;; Generic movement
 
 ;; Move in the requested direction and return how much
 ;; pixels the unit  moved
@@ -507,11 +514,11 @@
                        (> (gradient left (1+ top)) current-gradient-value)))
               (unit-align unit max-pixels :down)))))))))
 
+;;;;; Controllers
+
 (defun unit-act (unit)
   (declare (unit unit))
   (funcall (unit-controller unit) unit))
-
-;;;; Controllers
 
 (defvar *next-direction* :right)
 
@@ -541,7 +548,7 @@
 ;; `*pacman-gradient-max-depth*'
 (define-climber flee-from-pacman-controller *pacman-gradient* nil)
 
-;;;; Pacman
+;;;;; Pacman
 
 (defclass pacman (unit)
   (;; TODO: Implement pacman upon a surface, in order to we can use GFX
@@ -592,7 +599,7 @@
          (draw-filled-circle-* x (- y (round r 2)) (round r 5)
                                :color *black*))))))
 
-;;;; Monster
+;;;;; Monster
 
 (defclass monster (unit)
   ((livep
@@ -661,7 +668,8 @@
         (draw-filled-circle-* x y r :color background)
         (draw-box-* (- x (/ r 2)) (- y (/ r 2)) r r :color foreground)))))
 
-;;; Targets
+
+;;;; Targets
 
 (defclass target ()
   ((count
@@ -713,7 +721,8 @@
     (let ((color  (if superp *red* *orange*)))
       (draw-filled-circle-* x y *target-radius* :color color))))
 
-;;; Game loop
+
+;;;; Game loop
 
 (defun keypress (key)
   (case key
@@ -902,7 +911,7 @@
                     :surface *default-display*)
   (update-display))
 
-;;;; Run pacman
+;;;;; Run pacman
 
 ;; Use `generate-dumb-board' or `load-board-from-pbm-file' to load a
 ;; non-trivial-map.  The default one contains no walls at all.
@@ -945,9 +954,10 @@
   #-sb-thread (run-and-wait)
   (values))
 
+
 ;; Local Variables:
 ;; mode: Lisp
-;; outline-regexp: ";;;+"
+;; outline-regexp: ";;;;+"
 ;; indent-tabs-mode: nil
 ;; coding: us-ascii-unix
 ;; End:
