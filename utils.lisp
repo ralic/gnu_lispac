@@ -77,6 +77,11 @@
                              (function peek-last)))
          ,@body))))
 
+(defmacro while (condition &body code)
+  `(do ()
+       ((not ,condition))
+     ,@code))
+
 (defmacro dorange ((var min max &optional (step 1)) &body body)
   `(loop for ,var from ,min to ,max by ,step
          do (progn ,@body)))
