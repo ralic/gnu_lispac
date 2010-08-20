@@ -262,22 +262,23 @@
 (defun explorer-explore-to-waypoint (explorer)
   (declare (explorer explorer))
   (with-slots (tiles current-x current-y) explorer
-    (loop until (waypointp tiles current-x current-y)
-          do (explorer-step explorer))
-    (values current-x current-y)))
+    (loop for steps = 0 then (1+ steps)
+          until (waypointp tiles current-x current-y)
+          do (explorer-step explorer)
+          finally (return (values current-x current-y steps)))))
 
 (defun map-adjacent-waypoints (function board x y)
   (do-neighbor-tiles (board-tiles board) (neighbor-x x) (neighbor-y y)
-    (multiple-value-bind (waypoint-x waypoint-y)
+    (multiple-value-bind (waypoint-x waypoint-y steps)
         (explorer-explore-to-waypoint (make-explorer x y 
                                                      neighbor-x neighbor-y
                                                      (board-tiles board)))
-      (funcall function waypoint-x waypoint-y))))
+      (funcall function waypoint-x waypoint-y steps))))
 
 ;; Iterate through the waypoints from which there is a direct
 ;; connection with corridors.
-(defmacro do-connected-waypoints (board (x-var x) (y-var y) &body body)
-  `(map-adjacent-waypoints (lambda (,x-var ,y-var)
+(defmacro do-connected-waypoints (board (x-var x) (y-var y) steps-var &body body)
+  `(map-adjacent-waypoints (lambda (,x-var ,y-var ,steps-var)
                              ,@body)
                            ,board
                            ,x ,y))
