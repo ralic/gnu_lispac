@@ -275,7 +275,7 @@
 (defun map-adjacent-waypoints (function board x y)
   (do-neighbor-tiles (board-tiles board) (neighbor-x x) (neighbor-y y)
     (multiple-value-bind (waypoint-x waypoint-y distance)
-        (explorer-explore-to-waypoint (make-explorer x y 
+        (explorer-explore-to-waypoint (make-explorer x y
                                                      neighbor-x neighbor-y
                                                      (board-tiles board)))
       (funcall function waypoint-x waypoint-y distance))))
