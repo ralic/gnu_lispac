@@ -86,6 +86,15 @@
   `(loop for ,var from ,min to ,max by ,step
          do (progn ,@body)))
 
+;; Similar to `dolist' but uses `macrolet' so to enable the `body' to
+;; modify list items.
+(defmacro dolist* ((var list &optional (result nil)) &body body)
+  (with-gensyms (cons)
+    `(loop for ,cons on ,list
+           do (symbol-macrolet ((,var (car ,cons)))
+                ,@body)
+           ,@(if result `(finally (return ,result))))))
+
 ;;; Compare 2 generalized booleans.
 (defun boolean= (a b)
   (if a
