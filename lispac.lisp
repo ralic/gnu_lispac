@@ -225,11 +225,16 @@
   y
   edges)
 
-;; Edges are directed (One-way).  Only the incident vertex is pointed.
-(defstruct (edge (:constructor make-edge (vertex weight &optional path)))
-  vertex
+;; Edges are directed (One-way).  The source vertex is implicit; only
+;; the sink vertex is stored.
+(defstruct (edge (:constructor make-edge (sink weight gateway-x gateway-y)))
+  ;; Sink from the arrow viewpoint.
+  sink
+  ;; Distance from source vertex to sink vertex through this edge.
   weight
-  path)
+  ;; First tile of the path.
+  gateway-x
+  gateway-y)
 
 ;; TODO: Write documentation
 (defstruct (explorer (:constructor make-explorer (parent-x
@@ -262,23 +267,23 @@
 (defun explorer-explore-to-waypoint (explorer)
   (declare (explorer explorer))
   (with-slots (tiles current-x current-y) explorer
-    (loop for steps = 0 then (1+ steps)
+    (loop for distance = 0 then (1+ distance)
           until (waypointp tiles current-x current-y)
           do (explorer-step explorer)
-          finally (return (values current-x current-y steps)))))
+          finally (return (values current-x current-y distance)))))
 
 (defun map-adjacent-waypoints (function board x y)
   (do-neighbor-tiles (board-tiles board) (neighbor-x x) (neighbor-y y)
-    (multiple-value-bind (waypoint-x waypoint-y steps)
+    (multiple-value-bind (waypoint-x waypoint-y distance)
         (explorer-explore-to-waypoint (make-explorer x y 
                                                      neighbor-x neighbor-y
                                                      (board-tiles board)))
-      (funcall function waypoint-x waypoint-y steps))))
+      (funcall function waypoint-x waypoint-y distance))))
 
 ;; Iterate through the waypoints from which there is a direct
 ;; connection with corridors.
-(defmacro do-connected-waypoints (board (x-var x) (y-var y) steps-var &body body)
-  `(map-adjacent-waypoints (lambda (,x-var ,y-var ,steps-var)
+(defmacro do-connected-waypoints (board (x-var x) (y-var y) distance-var &body body)
+  `(map-adjacent-waypoints (lambda (,x-var ,y-var ,distance-var)
                              ,@body)
                            ,board
                            ,x ,y))
