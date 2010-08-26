@@ -26,6 +26,8 @@
    (:file "package")
    (:file "utils"
           :depends-on ("package"))
+   (:file "sparse-arrays"
+          :depends-on ("package" "utils"))
    (:file "lispac"
           :depends-on ("package" "utils"))))
 
