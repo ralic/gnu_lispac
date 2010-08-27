@@ -164,6 +164,10 @@
   `(unless (boundp (quote ,name))
      (defconstant ,name ,value)))
 
+(defmacro define-dumb-printer (class)
+  `(defmethod print-object ((object ,class) stream)
+     (print-unreadable-object (object stream :type t))))
+
 (defmacro defcolor (name r g b &optional a)
   (if a
       `(defconst ,name (color :r ,r :g ,g :b ,b :a ,a))
