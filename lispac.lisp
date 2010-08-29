@@ -273,17 +273,25 @@
           finally (return (values current-x current-y distance)))))
 
 (defun map-adjacent-waypoints (function board x y)
-  (do-neighbor-tiles (board-tiles board) (neighbor-x x) (neighbor-y y)
-    (multiple-value-bind (waypoint-x waypoint-y distance)
+  (do-neighbor-tiles (board-tiles board) (gateway-x x) (gateway-y y)
+    (multiple-value-bind (waypoint-x waypoint-y steps)
         (explorer-explore-to-waypoint (make-explorer x y
-                                                     neighbor-x neighbor-y
+                                                     gateway-x gateway-y
                                                      (board-tiles board)))
-      (funcall function waypoint-x waypoint-y distance))))
+      (funcall function waypoint-x waypoint-y (1+ steps) gateway-x gateway-y))))
 
 ;; Iterate through the waypoints from which there is a direct
 ;; connection with corridors.
-(defmacro do-connected-waypoints (board (x-var x) (y-var y) distance-var &body body)
-  `(map-adjacent-waypoints (lambda (,x-var ,y-var ,distance-var)
+(defmacro do-connected-waypoints ((board
+                                   distance
+                                   (x-var x) (y-var y)
+                                   &optional
+                                   gateway-x gateway-y)
+                                  &body body)
+  `(map-adjacent-waypoints (lambda (,x-var ,y-var
+                                    ,distance
+                                    ,(or gateway-x (gensym))
+                                    ,(or gateway-y (gensym)))
                              ,@body)
                            ,board
                            ,x ,y))
