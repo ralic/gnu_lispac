@@ -44,6 +44,8 @@
 ;; distance to respawn point.
 (defvar *print-respawn-gradient* nil)
 
+(defvar *print-waypoints* nil)
+
 ;; Board stored as a board object.
 (defvar *board*)
 
@@ -86,7 +88,11 @@
     :accessor board-respawn)
    (respawn-gradient
     :initarg :respawn-gradient
-    :accessor board-respawn-gradient)))
+    :accessor board-respawn-gradient)
+   (waypoints
+    :initarg :waypoints
+    :type sparse-table
+    :accessor board-waypoints)))
 
 (defun make-board (width height &optional tile)
   (make-instance 'board
@@ -833,19 +839,25 @@
 (defun update-board ()
   (with-slots (surface respawn-gradient) *board*
     (let ((width (board-width *board*))
-          (height (board-height *board*)))
+          (height (board-height *board*))
+          (waypoints (board-waypoints *board*)))
       (setf surface (create-surface (* *tile-size* width)
                                     (* *tile-size* height)))
       (dotimes (y height)
         (dotimes (x width)
           (let* ((gradient-value (min 255 (* 5 (aref respawn-gradient x y))))
-                 (color (if (tile *board* x y)
-                            *red*
-                            (if *print-respawn-gradient*
-                                (color :r gradient-value
-                                       :g gradient-value
-                                       :b gradient-value)
-                                *black*))))
+                 (color (cond
+                          ((tile *board* x y)
+                           *red*)
+                          (*print-waypoints*
+                           (if (stref waypoints x y)
+                               *white*
+                               *black*))
+                          (*print-respawn-gradient*
+                           (color :r gradient-value
+                                  :g gradient-value
+                                  :b gradient-value)
+                           *black*))))
             (draw-box-* (* *tile-size* x) (* *tile-size* y)
                         *tile-size* *tile-size*
                         :surface surface
@@ -965,6 +977,12 @@
       ;; Colision with vulnerable monster
       ((monster-vulnerablep monster)
        (monster-kill monster)))))
+
+(defun draw-waypoints (waypoints)
+  (dolist (waypoint waypoints)
+    (let ((x (* *tile-size* (vertex-x waypoint)))
+          (y (* *tile-size* (vertex-y waypoint))))
+      (draw-box-* x y 5 5))))
 
 (defun update ()
   (blit-surface (board-surface *board*))
