@@ -861,7 +861,8 @@
                           (*print-respawn-gradient*
                            (color :r gradient-value
                                   :g gradient-value
-                                  :b gradient-value)
+                                  :b gradient-value))
+                          (t
                            *black*))))
             (draw-box-* (* *tile-size* x) (* *tile-size* y)
                         *tile-size* *tile-size*
