@@ -224,6 +224,10 @@
 ;;; Every edge represents a corridor and every vertex represents the
 ;;; intersections.
 
+;; Should a waypoint be in this tile?.
+(defun waypointp (tiles x y)
+  (/= (tile-degree tiles x y) 2))
+
 ;; Regarding waypoints there is a vertex in every intersection (Tiles
 ;; with 1, 3 or 4 neighbors).
 (defstruct (vertex (:constructor make-vertex (x y)))
@@ -259,7 +263,10 @@
     ;; possible bugs arising for it use.
     (values)))
 
-;; TODO: Write documentation
+;;;;;; Exploreres
+
+;;; TODO: Write documentation
+
 (defstruct (explorer (:constructor make-explorer (parent-x
                                                   parent-y
                                                   current-x
@@ -270,10 +277,6 @@
   parent-y
   current-x
   current-y)
-
-;; Should a waypoint be in this tile?.
-(defun waypointp (tiles x y)
-  (/= (tile-degree tiles x y) 2))
 
 ;; In a corridor, advance to the next tile.
 (defun explorer-step (explorer)
@@ -318,6 +321,8 @@
                              ,@body)
                            ,board
                            ,x ,y))
+
+;;;;;; Computation
 
 (defun %compute-waypoint-graph (board starting-x starting-y)
   (let* ((dimensions (array-dimensions (board-tiles board)))
