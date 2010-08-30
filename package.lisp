@@ -16,6 +16,6 @@
 ;; along with lispac.  If not, see <http://www.gnu.org/licenses/>.
 
 (defpackage :lispac
-  (:use :cl :lispbuilder-sdl))
+  (:use :cl :anaphora :lispbuilder-sdl))
 
 ;;; package.lisp ends here

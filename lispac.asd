@@ -18,7 +18,8 @@
 (defsystem :lispac
   :name "lispac"
   :license "GPLv3+"
-  :depends-on (:lispbuilder-sdl
+  :depends-on (:anaphora
+               :lispbuilder-sdl
                :lispbuilder-sdl-gfx)
   :components
   ((:static-file "COPYING")
@@ -29,6 +30,6 @@
    (:file "sparse-arrays"
           :depends-on ("package" "utils"))
    (:file "lispac"
-          :depends-on ("package" "utils"))))
+          :depends-on ("package" "utils" "sparse-arrays"))))
 
 ;;; lispac.asd ends here

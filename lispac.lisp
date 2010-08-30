@@ -313,6 +313,41 @@
                            ,board
                            ,x ,y))
 
+(defun %compute-waypoint-graph (board starting-x starting-y)
+  (let* ((dimensions (array-dimensions (board-tiles board)))
+         (pending (list (make-vertex starting-x starting-y)))
+         ;; Holds all visited vertices.
+         (visited (make-sparse-table dimensions nil)))
+    (flet ((find-waypoint (list x y)
+             (dolist (waypoint list)
+               (when (and (= x (vertex-x waypoint))
+                          (= y (vertex-y waypoint)))
+                 (return waypoint)))))
+      (while pending
+        (let* ((current (pop pending))
+               (current-x (vertex-x current))
+               (current-y (vertex-y current)))
+          (do-connected-waypoints (board
+                                   distance
+                                   (terminal-x current-x)
+                                   (terminal-y current-y)
+                                   gateway-x gateway-y)
+            (acond
+              ((or (stref visited terminal-x terminal-y)
+                   (find-waypoint pending terminal-x terminal-y))
+               (vertex-join current it
+                            gateway-x gateway-y
+                            distance))
+              (t
+               (let ((terminal (make-vertex terminal-x terminal-y)))
+                 (push terminal pending)
+                 ;; Do this really belong here? - MXCC
+                 (vertex-join current terminal
+                              gateway-x gateway-y
+                              distance)))))
+          (setf (stref visited current-x current-y) current))))
+    visited))
+
 ;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
