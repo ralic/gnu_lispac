@@ -217,7 +217,7 @@
       (setf respawn (point :x x :y y)))
     (board-compute-gradient board respawn-gradient x y)))
 
-;;;;; Waypoints.
+;;;;; Waypoints
 
 ;;; Waypoints provide an alternative to raw gradients.  The waypoint
 ;;; graph is an abstract representation of the board as a graph.
