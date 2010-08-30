@@ -236,6 +236,23 @@
   gateway-x
   gateway-y)
 
+(defun vertex-join (source sink gateway-x gateway-y weight)
+  (declare (vertex source sink))
+  (let ((new-edge (make-edge sink weight gateway-x gateway-y)))
+    (dolist* (edge (vertex-edges source))
+      (when (eq sink (edge-sink edge))
+        (when (< weight (edge-weight edge))
+          ;; If there is alredy a edge which connects the same
+          ;; vertices with a weight greater than this one, substitute
+          ;; it.
+          (setf edge new-edge))
+        ;; The optimal connection between sink and source is done.
+        (return-from vertex-join)))
+    (push new-edge (vertex-edges source))
+    ;; Return value is meaningless by the moment, discard for avoid
+    ;; possible bugs arising for it use.
+    (values)))
+
 ;; TODO: Write documentation
 (defstruct (explorer (:constructor make-explorer (parent-x
                                                   parent-y
