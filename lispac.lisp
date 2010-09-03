@@ -359,6 +359,17 @@
           (setf (stref visited current-x current-y) current))))
     visited))
 
+;; Compute `waypoints' slot of the given `board' according to its
+;; `tiles'.
+(defun board-compute-waypoint-graph (board)
+  (with-slots (tiles) board
+    (dotimes (x (board-width board))
+      (dotimes (y (board-width board))
+        (when (waypointp tiles x y)
+          (setf (board-waypoints board)
+                (%compute-waypoint-graph board x y))
+          (return-from board-compute-waypoint-graph))))))
+
 ;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
