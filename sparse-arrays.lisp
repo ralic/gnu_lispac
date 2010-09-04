@@ -42,7 +42,11 @@
   (%make-sparse-table (make-hash-table) dimensions default-element))
 
 (defun make-sparse-table-key (x y)
-  (+ (ash y (integer-length y)) x))
+  (cond
+    ((>= x y)
+     (+ (* x x) x y))
+    ((< x y)
+     (+ (* y y) x))))
 
 (defun sparse-table-size (table)
   (list 
