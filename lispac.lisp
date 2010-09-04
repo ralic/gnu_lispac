@@ -69,7 +69,7 @@
 
 ;; Default ticks monsters will be vulnerable when pacman eat a super
 ;; target.
-(defvar *monster-vulnerable-ticks*)
+(defvar *monster-vulnerable-ticks* 200)
 
 
 ;;;; Board

@@ -3,6 +3,7 @@
 ;;;; License
 
 ;;; Copyrigth (C) 2010 Mario Castelan Castro <marioxcc>
+;;; Copyright (C) 2010 Kevin Mas Ruiz
 
 ;;; Special thanks to a _not_ anonymous for us, but for everybody else,
 ;;; who wrote and donated the base of lispac.
@@ -31,22 +32,41 @@
 ;;; Sparse arrays
 
 (defstruct (sparse-table
-             (:constructor %make-sparse-table (array dimensions)))
-  array
-  dimensions)
+             (:constructor %make-sparse-table 
+                           (hash-table dimensions default-element)))
+  hash-table
+  dimensions
+  default-element)
 
 (defun make-sparse-table (dimensions default-element)
-  (%make-sparse-table (make-array dimensions :initial-element default-element)
-                      dimensions))
+  (%make-sparse-table (make-hash-table) dimensions default-element))
+
+(defun sparse-table-size (table)
+  (list 
+   (hash-table-size (sparse-table-hash-table table))
+   (sparse-table-dimensions table)))
+
+(defun sparse-table-optimize-p (table)
+  (>= (hash-table-size (sparse-table-hash-table table))
+      (sparse-table-dimensions table) 2))
+
+(defun sparse-table-optimize (table)
+  (when (sparse-table-optimize-p table)
+    (hash-table-rehash-size (sparse-table-hash-table table))))
 
 (defun stref (table x y)
-  (aref (sparse-table-array table) x y))
+  (let ((val (gethash (* x y) (sparse-table-hash-table table))))
+    (if (null val)
+        (sparse-table-default-element table)
+        val)))
 
 (defun set-stref (table x y value)
-  (setf (aref (sparse-table-array table) x y) value))
+  (if (null value)
+      (remhash (* x y) (sparse-table-hash-table table))
+      (setf (gethash (* x y) (sparse-table-hash-table table)) value)))
 
 (defsetf stref set-stref)
-
+ 
 
 ;; Local Variables:
 ;; mode: Lisp
