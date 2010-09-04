@@ -41,6 +41,9 @@
 (defun make-sparse-table (dimensions default-element)
   (%make-sparse-table (make-hash-table) dimensions default-element))
 
+(defun make-sparse-table-key (x y)
+  (+ (ash y (integer-length y)) x))
+
 (defun sparse-table-size (table)
   (list 
    (hash-table-size (sparse-table-hash-table table))
@@ -55,15 +58,21 @@
     (hash-table-rehash-size (sparse-table-hash-table table))))
 
 (defun stref (table x y)
-  (let ((val (gethash (* x y) (sparse-table-hash-table table))))
+  (let ((val (gethash 
+              (make-sparse-table-key x y)
+              (sparse-table-hash-table table))))
     (if (null val)
         (sparse-table-default-element table)
         val)))
 
 (defun set-stref (table x y value)
   (if (null value)
-      (remhash (* x y) (sparse-table-hash-table table))
-      (setf (gethash (* x y) (sparse-table-hash-table table)) value)))
+      (remhash 
+       (make-sparse-table-key x y) 
+       (sparse-table-hash-table table))
+      (setf (gethash 
+             (make-sparse-table-key x y) 
+             (sparse-table-hash-table table)) value)))
 
 (defsetf stref set-stref)
  
