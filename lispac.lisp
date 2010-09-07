@@ -323,6 +323,10 @@
                                     ,distance
                                     ,(or gateway-x (gensym))
                                     ,(or gateway-y (gensym)))
+                             ,@(if (not gateway-x) ; Assumed to be
+                                                   ; given together
+                                   (list
+                                    `(declare (ignore ,gateway-x ,gateway-y))))
                              ,@body)
                            ,board
                            ,x ,y))
