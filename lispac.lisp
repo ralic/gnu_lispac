@@ -115,6 +115,11 @@
 
 (defsetf tile set-tile)
 
+(defun waypoint (board x y)
+  (declare (board board)
+           (fixnum x y))
+  (stref (board-waypoints board) x y))
+
 (defun board-width (board)
   (declare (board board))
   (array-dimension (board-tiles board) 0))
