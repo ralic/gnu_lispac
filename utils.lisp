@@ -82,6 +82,11 @@
        ((not ,condition))
      ,@code))
 
+;; `awhile' is to `while' as `aif' is to `if'.
+(defmacro awhile (condition &body body)
+ `(let ((it ,condition))
+    (while it ,@body)))
+
 (defmacro dorange ((var min max &optional (step 1)) &body body)
   `(loop for ,var from ,min to ,max by ,step
          do (progn ,@body)))
