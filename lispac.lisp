@@ -205,23 +205,6 @@
   (declare (fixnum ax ay bx by))
   (= 1 (+ (abs (- ax bx)) (abs (- ay by)))))
 
-;;;;; Gradients
-
-;; TODO: Write documentation
-(defun board-compute-gradient (board gradient x y &optional max-distance)
-  (declare (board board))
-  (let ((function (lambda (x y distance)
-          (setf (aref gradient x y) distance))))
-    (board-map-connected-tiles function board x y max-distance)))
-
-;; Update slot `gradient' of `board'
-(defun board-update-respawn-gradient (board &optional x y)
-  (declare (board board))
-  (with-slots (respawn respawn-gradient) board
-    (when (or x y)
-      (setf respawn (point :x x :y y)))
-    (board-compute-gradient board respawn-gradient x y)))
-
 ;;;;; Waypoints
 
 ;;; Waypoints provide an alternative to raw gradients.  The waypoint
@@ -378,6 +361,76 @@
           (setf (board-waypoints board)
                 (%compute-waypoint-graph board x y))
           (return-from board-compute-waypoint-graph))))))
+
+;;;;;; Trees
+
+(defstruct (waypoints-tree
+             (:constructor %make-waypoints-gradient (center-x center-y)))
+  center-x
+  center-y
+  ;; Vertices which bound the corridor containing the center.  `nil'
+  ;; the center is a waypoint.
+  gateways)
+
+(defun board-compute-spt (board x y &optional max-distance)
+  (declare (board board)
+           (ignore max-distance))
+  (let ((tiles (board-tiles board))
+        ;; Each item in the pending vertex heap (Used as a priority
+        ;; queue) consists of a list.  In order: Tentative cost;
+        ;; Tentative predecessor (An `edge' or `nil' for the
+        ;; gateways); and finally the vertex itself.
+        (pending (make-instance 'cl-heap:binary-heap
+                                :key #'first))
+        (distances (make-sparse-table (list (board-width board)
+                                            (board-height board))
+                                      most-positive-fixnum))
+        (predecessors (make-sparse-table (list (board-width board)
+                                               (board-height board))
+                                         nil)))
+    ;; Enqueue starting tiles.
+    (if (waypointp tiles x y)
+        (cl-heap:enqueue pending (waypoint board x y) 0)
+        (do-connected-waypoints
+            (board distance (neighbor-x x) (neighbor-y y))
+          (cl-heap:add-to-heap pending
+                               (list distance
+                                     nil
+                                     (waypoint board neighbor-x neighbor-y)))))
+    ;; Perform a uniform cost serach.
+    (loop until (cl-heap:is-empty-heap-p pending)
+          for item = (cl-heap:pop-heap pending)
+          for cost = (first item)
+          for predecessor = (second item)
+          for current = (third item)
+          for x = (vertex-x current)
+          for y = (vertex-y current)
+          ;; Don't (re-)visit `current' if it has been alredy visited
+          ;; by another, cheaper path.
+          when (< cost (stref distances x y))
+          do (progn
+               (setf (stref distances x y) cost)
+               (setf (stref predecessors x y) predecessor)
+               (dolist (edge (vertex-edges current))
+                 (let* ((neighbor (edge-sink edge))
+                        (neighbor-x (vertex-x neighbor))
+                        (neighbor-y (vertex-y neighbor))
+                        (edge-weight (edge-weight edge))
+                        (total (+ cost edge-weight)))
+                   (when (< total (stref distances neighbor-x neighbor-y))
+                     (cl-heap:add-to-heap pending
+                                          (list total
+                                                current
+                                                neighbor)))))))
+    (values predecessors distances)))
+
+;; Update slot `gradient' of `board'
+(defun board-update-respawn-gradient (board &optional x y)
+  (declare (board board))
+  (with-slots (respawn respawn-gradient) board
+    (when (or x y)
+      (setf respawn (point :x x :y y)))
+    (board-compute-gradient board respawn-gradient x y)))
 
 ;;;;; Generation and loading
 
