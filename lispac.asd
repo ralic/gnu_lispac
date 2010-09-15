@@ -19,6 +19,7 @@
   :name "lispac"
   :license "GPLv3+"
   :depends-on (:anaphora
+               :cl-heap
                :lispbuilder-sdl
                :lispbuilder-sdl-gfx)
   :components
