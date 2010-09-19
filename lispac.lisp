@@ -225,31 +225,37 @@
 
 ;; Edges are directed (One-way).  The source vertex is implicit; only
 ;; the sink vertex is stored.
-(defstruct (edge (:constructor make-edge (sink weight gateway-x gateway-y)))
+(defstruct (edge (:constructor make-edge
+                               (sink weight gateway-x gateway-y complement)))
   ;; Sink from the arrow viewpoint.
   sink
   ;; Distance from source vertex to sink vertex through this edge.
   weight
   ;; First tile of the path.
   gateway-x
-  gateway-y)
+  gateway-y
+  ;; The edge in the oposite direction.
+  complement)
 
-(defun vertex-join (source sink gateway-x gateway-y weight)
+;; Add or replace an edge from `source' to sink unless there is alredy
+;; a better one (With same or less `weight'.  Returns 2 values: the
+;; best edge from `source' to `weight'; and `t' if its fresh, `nil'
+;; otherwise.
+(defun vertex-join (source sink gateway-x gateway-y weight
+                    &optional complement)
   (declare (vertex source sink))
-  (let ((new-edge (make-edge sink weight gateway-x gateway-y)))
+  (let ((new-edge (make-edge sink weight gateway-x gateway-y complement)))
     (dolist* (edge (vertex-edges source))
       (when (eq sink (edge-sink edge))
-        (when (< weight (edge-weight edge))
-          ;; If there is alredy a edge which connects the same
-          ;; vertices with a weight greater than this one, substitute
-          ;; it.
-          (setf edge new-edge))
-        ;; The optimal connection between sink and source is done.
-        (return-from vertex-join)))
+        (return-from vertex-join
+          (values edge
+                  (when (< weight (edge-weight edge))
+                    ;; If there is alredy a edge which connects the
+                    ;; same vertices with a weight greater than this
+                    ;; one, substitute it.
+                    (prog1 t (setf edge new-edge)))))))
     (push new-edge (vertex-edges source))
-    ;; Return value is meaningless by the moment, discard for avoid
-    ;; possible bugs arising for it use.
-    (values)))
+    (values new-edge t)))
 
 ;;;;;; Exploreres
 
