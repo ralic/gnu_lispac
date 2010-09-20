@@ -344,9 +344,17 @@
             (acond
               ((or (stref visited terminal-x terminal-y)
                    (find-waypoint pending terminal-x terminal-y))
-               (vertex-join current it
-                            gateway-x gateway-y
-                            distance))
+               (multiple-value-bind (edge freshp)
+                   (vertex-join current it
+                                gateway-x gateway-y
+                                distance)
+                 (when freshp
+                   ;; Find complement, when present.
+                   (dolist (tentative-complement (vertex-edges it))
+                     (when (and (eq (edge-sink tentative-complement) current)
+                                (= (edge-weight tentative-complement) distance))
+                       (setf (edge-complement tentative-complement) edge)
+                       (setf (edge-complement edge) tentative-complement))))))
               (t
                (let ((terminal (make-vertex terminal-x terminal-y)))
                  (push terminal pending)
