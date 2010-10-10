@@ -386,7 +386,7 @@
   ;; the center is a waypoint.
   gateways)
 
-(defun board-compute-spt (board x y &optional max-distance)
+(defun board-compute-vertices-parents (board x y &optional max-distance)
   (declare (board board)
            (ignore max-distance))
   (let ((tiles (board-tiles board))
@@ -434,7 +434,7 @@
                    (when (< total (stref distances neighbor-x neighbor-y))
                      (cl-heap:add-to-heap pending
                                           (list total
-                                                current
+                                                (edge-complement edge)
                                                 neighbor)))))))
     (values predecessors distances)))
 
