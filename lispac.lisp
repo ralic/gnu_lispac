@@ -378,13 +378,10 @@
 
 ;;;;;; Trees
 
-(defstruct (waypoints-tree
-             (:constructor %make-waypoints-gradient (center-x center-y)))
+(defstruct waypoints-tree
   center-x
   center-y
-  ;; Vertices which bound the corridor containing the center.  `nil'
-  ;; the center is a waypoint.
-  gateways)
+  parents)
 
 (defun board-compute-vertices-parents (board x y &optional max-distance)
   (declare (board board)
@@ -437,6 +434,13 @@
                                                 (edge-complement edge)
                                                 neighbor)))))))
     (values predecessors distances)))
+
+(defun board-compute-waypoint-tree (board center-x center-y)
+  (let ((parents
+         (board-compute-vertices-parents board center-x center-y)))
+    (make-waypoints-tree :center-x center-x
+                         :center-y center-y
+                         :parents parents)))
 
 ;; Update slot `gradient' of `board'
 (defun board-update-respawn-gradient (board &optional x y)
