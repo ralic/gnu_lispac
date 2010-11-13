@@ -225,6 +225,46 @@
   `(multiple-setf t ,@places))
 
 
+;;; Directions
+
+(deftype direction ()
+  `(member :left :right :up :down))
+
+;; Direction from (`x0', `y0') to (`x1', `y1') provided they're 1 tile
+;; away (Manhattan distance), throw an error otherwise.
+(defun direction (x0 y0 x1 y1)
+  (declare (fixnum x0 y0 x1 y1))
+  (let ((h (- x0 x1))
+        (v (- y0 y1)))
+    (ecase h
+      (1 :left)
+      (-1 :right)
+      (0 (ecase v
+           (1 :up)
+           (-1 :down))))))
+
+;; Return the coordinates of a new point consisting of (`x', `y')
+;; moved 1 tile in the given `direction'.
+(defun displace (x y direction)
+  (declare (fixnum x y)
+           (direction direction))
+  (ecase direction
+    (:left (values (1- x) y))
+    (:right (values (1+ x) y))
+    (:up (values x (1- y)))
+    (:down (values x (1+ y)))))
+
+;; Like `displace' but work with `point's.
+(defun displace-point (point direction)
+  (multiple-value-call #'make-point (displace (x point) (y point) direction)))
+
+(defmacro displacef (place-x place-y direction)
+  `(multiple-value-bind (new-x new-y)
+       (displace ,place-x ,place-y ,direction)
+     (setf ,place-x new-x)
+     (setf ,place-y new-y)))
+
+
 ;;; Portable bit map parser
 
 ;; ASCII for "P6"
