@@ -146,6 +146,9 @@
     (unless (funcall test (elt sequence i) (read-byte stream))
       (return i))))
 
+(defun make-point (x y)
+  (vector x y))
+
 
 ;;; Definitions & declarations
 
