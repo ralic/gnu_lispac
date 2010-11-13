@@ -101,6 +101,9 @@
                 ,@body)
            ,@(if result `(finally (return ,result))))))
 
+(defun find-alist (item sequence)
+  (cdr (assoc item sequence)))
+
 ;;; Compare 2 generalized booleans.
 (defun boolean= (a b)
   (if a
