@@ -300,6 +300,24 @@
                                                      (board-tiles board)))
       (funcall function waypoint-x waypoint-y (1+ steps) gateway-x gateway-y))))
 
+(defstruct connected-waypoint
+  waypoint
+  distance
+  gateway)
+
+(defun connected-waypoints (board x y)
+  (with-collecting
+    (do-connected-waypoints (board
+                             distance
+                             (waypoint-x x)
+                             (waypoint-y y)
+                             gateway-x
+                             gateway-y)
+      (collect (make-connected-waypoint
+                :waypoint (make-point waypoint-x waypoint-y)
+                :gateway (make-point gateway-x gateway-y)
+                :distance distance)))))
+
 ;; Iterate through the waypoints from which there is a direct
 ;; connection with corridors.
 (defmacro do-connected-waypoints ((board
