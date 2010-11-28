@@ -52,6 +52,9 @@
          ,@code)
        (cdr ,collected))))
 
+(defmacro collect-setf (place &body body)
+  `(setf ,place (with-collecting ,@body)))
+
 ;; Bind `enqueue', `dequeue'. `peek-first' and `peek-last' to queue
 ;; handlers.
 (defmacro with-queue ((&optional first-cons) &body body)
