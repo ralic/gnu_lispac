@@ -481,6 +481,106 @@
       (setf respawn (point :x x :y y)))
     (board-compute-gradient board respawn-gradient x y)))
 
+;;;;;; Trackers
+
+;; These, given a starting position in the board and the subsequent
+;; moves (Modifications) can tell where it is located in absolute (X
+;; and Y) or relative (Relative to the waypoint graph) terms.
+
+;; A position in the board, and hence a tracker, can only be in either
+;; a waypoint or a corridor.  When the tracker is on a waypoint
+;; `waypoint' references it, otherwise `gateways' lists the 2
+;; waypoints than delimit the corridor, the distance to these and the
+;; direction of the next tile to them through the corridor (From the
+;; tracker viewpoint).  Note `waypoint' and `gateways' are exclusive:
+;; Always exactly one is `nil' and the other is not.
+(defstruct (tracker (:constructor %make-tracker))
+  x
+  y
+  board
+  ;; List of (direction distance vertex).
+  gateways
+  ;; Which tile is the `tracker' on, if any?.  `nil' otherwise.
+  waypoint)
+
+(defun make-tracker (board x y)
+  (let ((gateways
+         (with-collecting
+           (do-connected-waypoints (board
+                                    distance
+                                    (waypoint-x x)
+                                    (waypoint-y y)
+                                    gateway-x
+                                    gateway-y)
+             (collect (list (direction x y gateway-x gateway-y)
+                            distance
+                            (waypoint board
+                                      waypoint-x
+                                      waypoint-y)))))))
+
+    (%make-tracker :x x
+                   :y y
+                   :board board
+                   :gateways gateways
+                   :waypoint (waypoint board x y))))
+
+;; Move the `tracker' one tile in the give `direction'.
+
+;; TODO: Add "collision" checking (Not every direction is valid from
+;; every possition in every possible board).
+(defun tracker-move (tracker direction)
+  (with-slots (x y board gateways waypoint) tracker
+    (multiple-value-bind (new-x new-y)
+        (displace x y direction)
+      (cond
+        (waypoint
+         (let* ((edge (vertex-edge-to waypoint direction)))
+           (cond
+             ;; From waypoint to waypoint move.
+             ((= 1 (edge-weight edge))
+              (setf waypoint (edge-sink edge)))
+             ;; From waypoint to corridor move.
+             (t
+              (collect-setf gateways
+                (do-neighbor-tiles (board-tiles board)
+                    (neighbor-x new-x)
+                    (neighbor-y new-y)
+                  (let ((direction (direction new-x new-y
+                                              neighbor-x neighbor-y)))
+                    (collect (if (and (= x neighbor-x)
+                                      (= y neighbor-y))
+                                 (list direction 1 waypoint)
+                                 (list direction
+                                       (1- (edge-weight edge))
+                                       (edge-sink edge)))))))
+              (nilf waypoint)))))
+        (t
+         ;; TODO: Find a more elegant way to do this.
+         (let ((next (find direction gateways :key #'first))
+               (past (find direction gateways :key #'first :test-not #'eq)))
+           (cond
+             ;; Corridor to waypoint move.
+             ((= 1 (second next))       ; It's 1 before decrement!.
+              (setf waypoint (third next))
+              (nilf gateways))
+             ;; Corridor to corridor move.
+             (t
+              (collect-setf gateways
+                (do-neighbor-tiles (board-tiles board)
+                    (neighbor-x new-x)
+                    (neighbor-y new-y)
+                  (let ((direction (direction new-x new-y
+                                              neighbor-x neighbor-y)))
+                    (collect (if (and (= x neighbor-x)
+                                      (= y neighbor-y))
+                                 (list direction
+                                       (1+ (second past))
+                                       (third past))
+                                 (list direction
+                                       (1- (second next))
+                                       (third next)))))))))))))
+    (displacef x y direction)))
+
 ;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
