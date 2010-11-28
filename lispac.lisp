@@ -257,6 +257,19 @@
     (push new-edge (vertex-edges source))
     (values new-edge t)))
 
+;; Find a `edge' whose a gateway is in `direction' from `vertex'.
+(defun vertex-edge-to (vertex direction)
+  (declare (vertex vertex)
+           (direction direction))
+  (let ((x (vertex-x vertex))
+        (y (vertex-y vertex)))
+    (find direction (vertex-edges vertex)
+          :test (lambda (direction edge)
+                  (eq direction (direction x
+                                           y
+                                           (edge-gateway-x edge)
+                                           (edge-gateway-y edge)))))))
+
 ;;;;;; Exploreres
 
 ;;; TODO: Write documentation
