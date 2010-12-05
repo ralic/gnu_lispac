@@ -498,25 +498,17 @@
   waypoint)
 
 (defun make-tracker (board x y)
-  (let ((gateways
-         (with-collecting
-           (do-connected-waypoints (board
-                                    distance
-                                    (waypoint-x x)
-                                    (waypoint-y y)
-                                    gateway-x
-                                    gateway-y)
-             (collect (list (direction x y gateway-x gateway-y)
-                            distance
-                            (waypoint board
-                                      waypoint-x
-                                      waypoint-y)))))))
-
-    (%make-tracker :x x
-                   :y y
-                   :board board
-                   :gateways gateways
-                   :waypoint (waypoint board x y))))
+  (acond
+    ((waypoint board x y)
+     (%make-tracker :x x
+                    :y y
+                    :board board
+                    :waypoint it))
+    (t
+     (%make-tracker :x x
+                    :y y
+                    :board board
+                    :gateways (connected-waypoints board x y)))))
 
 ;; Move the `tracker' one tile in the give `direction'.
 
