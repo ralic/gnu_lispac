@@ -52,6 +52,22 @@
          ,@code)
        (cdr ,collected))))
 
+;; Return the item with the lower key, and its key among the
+;; `collect-if-minimum' arguments.  If `collect-if-minimum' wasn't
+;; called return `nil' and `nil'
+(defmacro with-collect-if-minimum (&body code)
+  (with-gensyms (minimum minimum-key emptyp)
+    `(let ((,minimum)
+           (,minimum-key)
+           (,emptyp t))
+       (flet ((collect-if-minimum (key item)
+                (when (or ,emptyp (< key ,minimum-key))
+                  (setf ,minimum item)
+                  (setf ,minimum-key key)
+                  (setf ,emptyp nil))))
+         ,@code)
+       (values ,minimum ,minimum-key))))
+
 (defmacro collect-setf (place &body body)
   `(setf ,place (with-collecting ,@body)))
 
