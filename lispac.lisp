@@ -403,10 +403,36 @@
 
 ;;;;;; Trees
 
-(defstruct waypoints-tree
+;; Waypoint trees represent a spanning tree of the board non-wall
+;; tiles.  However, only explicit information is kept internally for
+;; waypoints.  Corridor parents are computed when need from connected
+;; waypoints.
+
+;; Waypoint trees are meant to be used in pathfinding.
+(defstruct (waypoints-tree (:constructor %make-waypoints-tree))
+  board
   center-x
   center-y
-  parents)
+  ;; A sparse array of edges and `nil'.  `nil' means the tile is
+  ;; either a gateway or the center.
+  parents
+  ;; Distance from waypoints to center.
+  distances)
+
+(defun make-waypoints-tree (board center-x center-y)
+  (multiple-value-bind (parents distances)
+      (board-compute-vertices-parents board center-x center-y)
+    (%make-waypoints-tree
+     :center-x center-x
+     :center-y center-y
+     :parents parents
+     :distances distances)))
+
+(defun waypoints-tree-parent (tree x y)
+  (stref (waypoints-tree-parents tree) x y))
+
+(defun waypoints-tree-distance (tree x y)
+  (stref (waypoints-tree-distances tree) x y))
 
 (defun board-compute-vertices-parents (board x y &optional max-distance)
   (declare (board board)
