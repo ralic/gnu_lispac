@@ -593,6 +593,24 @@
                                        (third next)))))))))))))
     (displacef x y direction)))
 
+(defun tracker-parent (tracker tree)
+  (with-slots (x y waypoint gateways) tracker
+    (cond
+      (waypoint
+       (let ((edge (waypoints-tree-parent tree x y)))
+         (direction x y (edge-gateway-x edge) (edge-gateway-y edge))))
+      (t
+       (with-collect-if-minimum
+         (dolist (gateway gateways)
+           (let* ((waypoint (third gateway))
+                  ;; Distance from vertex to center.
+                  (distance
+                   (waypoints-tree-parent tree
+                                          (vertex-x waypoint)
+                                          (vertex-y waypoint))))
+             (collect-if-minimum (+ (second gateway) distance)
+                                 (first gateway)))))))))
+
 ;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
