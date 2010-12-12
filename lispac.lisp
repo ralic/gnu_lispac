@@ -514,9 +514,9 @@
 (defun board-compute-waypoint-tree (board center-x center-y)
   (let ((parents
          (board-compute-vertices-parents board center-x center-y)))
-    (make-waypoints-tree :center-x center-x
-                         :center-y center-y
-                         :parents parents)))
+    (make-waypoints-tree center-x
+                         center-y
+                         parents)))
 
 ;; Update slot `gradient' of `board'
 (defun board-update-respawn-gradient (board &optional x y)
