@@ -270,6 +270,31 @@
                                            (edge-gateway-x edge)
                                            (edge-gateway-y edge)))))))
 
+;; A corridor is the non-empty set of connected tiles delimited by
+;; exactly 2 gateways.  There may be more than one corridor between 2
+;; gateways, but always exactly one edge (And its `complement').
+;;
+;; Corridor structure represent a corridor, based on the topmost
+;; leftmost waypoint and the direction of the first tile.  For
+;; instance, the corridor maked with double line would be represented
+;; as a `corridor' whose `vertex' is `W', and `direction' is `:right':
+;;
+;;   -W===V-
+;;    |   |
+;;    +---+
+;;
+;; A single tile may be precisely identified in relation to the
+;; waypoint graph by the corrider where it's located, and the distance
+;; to one of the delimiting gateways.
+(defstruct corridor
+  (vertex nil :type vertex)
+  (direction nil :type direction))
+
+(defun corridor= (a b)
+  (declare (corridor a b))
+  (and (eq (corridor-vertex a) (corridor-vertex b))
+       (eq (corridor-direction a) (corridor-direction b))))
+
 ;;;;;; Exploreres
 
 ;;; TODO: Write documentation
