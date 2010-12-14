@@ -330,45 +330,55 @@
           do (explorer-step explorer)
           finally (return (values current-x current-y distance)))))
 
-(defun map-adjacent-waypoints (function board x y)
-  (do-neighbor-tiles (board-tiles board) (gateway-x x) (gateway-y y)
-    (multiple-value-bind (waypoint-x waypoint-y steps)
-        (explorer-explore-to-waypoint (make-explorer x y
-                                                     gateway-x gateway-y
-                                                     (board-tiles board)))
-      (funcall function waypoint-x waypoint-y (1+ steps) gateway-x gateway-y))))
-
 (defun connected-waypoints (board x y)
   (with-collecting
     (do-connected-waypoints (board
                              distance
                              (waypoint-x x)
                              (waypoint-y y)
-                             gateway-x
-                             gateway-y)
+                             :gateway-x gateway-x
+                             :gateway-y gateway-y)
       (collect (list (direction x y gateway-x gateway-y)
                      distance
                      (waypoint board waypoint-x waypoint-y))))))
 
-;; Iterate through the waypoints from which there is a direct
-;; connection with corridors.
+;; Iterate through the waypoints for which there is a direct
+;; connection with corridor.
+;;
+;; At the time `body' is evaluated (`gateway-x', `gateway-y') and
+;; (`waypoint-gateway-x', `waypoint-gateway-y') if given are bound to
+;; the origin-side and waypoint-side gateways, respectively.  I.e: The
+;; coordinate of the first tile from the origin (`x', `y') or the
+;; currently visited waypoint.
 (defmacro do-connected-waypoints ((board
                                    distance
-                                   (x-var x) (y-var y)
-                                   &optional
-                                   gateway-x gateway-y)
+                                   (waypoint-x x) (waypoint-y y)
+                                   &key
+                                   gateway-x
+                                   gateway-y
+                                   waypoint-gateway-x
+                                   waypoint-gateway-y)
                                   &body body)
-  `(map-adjacent-waypoints (lambda (,x-var ,y-var
-                                    ,distance
-                                    ,(or gateway-x (gensym))
-                                    ,(or gateway-y (gensym)))
-                             ,@(if (not gateway-x) ; Assumed to be
-                                                   ; given together
-                                   (list
-                                    `(declare (ignore ,gateway-x ,gateway-y))))
-                             ,@body)
-                           ,board
-                           ,x ,y))
+  (with-gensyms (explorer
+                 tiles
+                 steps
+                 (gateway-x gateway-x)
+                 (gateway-y gateway-y))
+    `(let ((,tiles (board-tiles ,board)))
+       (do-neighbor-tiles
+           ,tiles
+           (,gateway-x ,x)
+           (,gateway-y ,y)
+         (let ((,explorer (make-explorer ,x ,y ,gateway-x ,gateway-y ,tiles)))
+           (multiple-value-bind (,waypoint-x ,waypoint-y ,steps)
+               (explorer-explore-to-waypoint ,explorer)
+             ,(if waypoint-gateway-x
+                  `(let ((,waypoint-gateway-x (explorer-parent-x ,explorer))
+                         (,waypoint-gateway-y (explorer-parent-y ,explorer))
+                         (,distance (1+ ,steps)))
+                     ,@body)
+                  `(let ((,distance (1+ ,steps)))
+                     ,@body))))))))
 
 ;;;;;; Computation
 
@@ -390,7 +400,8 @@
                                    distance
                                    (terminal-x current-x)
                                    (terminal-y current-y)
-                                   gateway-x gateway-y)
+                                   :gateway-x gateway-x
+                                   :gateway-y gateway-y)
             (acond
               ((or (stref visited terminal-x terminal-y)
                    (find-waypoint pending terminal-x terminal-y))
