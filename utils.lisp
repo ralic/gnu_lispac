@@ -138,6 +138,10 @@
   (declare (integer m n))
   (zerop (mod m n)))
 
+(defun topmost-leftmost-p (x0 y0 x1 y1)
+  ;; Standard western writing order (Left to right, top to bottom).
+  (or (< y0 y1) (and (= y0 y1) (< x0 x1))))
+
 (defun read-bytes (stream n)
   (declare (fixnum n))
   (let ((buffer (make-array n)))
