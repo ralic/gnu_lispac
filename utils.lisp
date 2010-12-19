@@ -250,8 +250,10 @@
 
 ;;; Directions
 
+(defconst +directions+ '(:left :up :right :down))
+
 (deftype direction ()
-  `(member :left :right :up :down))
+  `(member ,@+directions+))
 
 ;; Direction from (`x0', `y0') to (`x1', `y1') provided they're 1 tile
 ;; away (Manhattan distance), throw an error otherwise.
