@@ -268,6 +268,11 @@
            (1 :up)
            (-1 :down))))))
 
+;; Compare directions with a clockwise order starting from `:left'.
+(defun direction< (a b)
+  (< (position a +directions+)
+     (position b +directions+)))
+
 ;; Return the coordinates of a new point consisting of (`x', `y')
 ;; moved 1 tile in the given `direction'.
 (defun displace (x y direction)
