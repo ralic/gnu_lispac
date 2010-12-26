@@ -485,6 +485,10 @@
   board
   center-x
   center-y
+  ;; Corridor which contains the center, if applicable.
+  corridor
+  ;; Distance to the `corridor' reference vertex.
+  location
   ;; A sparse array of edges and `nil'.  `nil' means the tile is
   ;; either a gateway or the center.
   parents
@@ -492,13 +496,19 @@
   distances)
 
 (defun make-waypoints-tree (board center-x center-y)
-  (multiple-value-bind (parents distances)
-      (board-compute-vertices-parents board center-x center-y)
-    (%make-waypoints-tree
-     :center-x center-x
-     :center-y center-y
-     :parents parents
-     :distances distances)))
+  (let ((waypoints-tree
+         (multiple-value-bind (parents distances)
+             (board-compute-vertices-parents board center-x center-y)
+           (%make-waypoints-tree
+            :center-x center-x
+            :center-y center-y
+            :parents parents
+            :distances distances))))
+    (unless (waypoint board center-x center-y)
+      (setf (values (waypoints-tree-corridor waypoints-tree)
+                    (waypoints-tree-location waypoints-tree))
+            (corridor *board* center-x center-y)))
+    waypoints-tree))
 
 (defun waypoints-tree-parent (tree x y)
   (stref (waypoints-tree-parents tree) x y))
