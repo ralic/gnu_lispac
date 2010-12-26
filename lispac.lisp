@@ -226,14 +226,13 @@
 ;; Edges are directed (One-way).  The source vertex is implicit; only
 ;; the sink vertex is stored.
 (defstruct (edge (:constructor make-edge
-                               (sink weight gateway-x gateway-y complement)))
+                               (sink weight direction complement)))
   ;; Sink from the arrow viewpoint.
   sink
   ;; Distance from source vertex to sink vertex through this edge.
   weight
-  ;; First tile of the path.
-  gateway-x
-  gateway-y
+  ;; Direction to the first tile of the path.
+  direction
   ;; The edge in the oposite direction.
   complement)
 
@@ -244,7 +243,9 @@
 (defun vertex-join (source sink gateway-x gateway-y weight
                     &optional complement)
   (declare (vertex source sink))
-  (let ((new-edge (make-edge sink weight gateway-x gateway-y complement)))
+  (let* ((direction (direction (vertex-x source) (vertex-y source)
+                               gateway-x gateway-y))
+         (new-edge (make-edge sink weight direction complement)))
     (dolist* (edge (vertex-edges source))
       (when (eq sink (edge-sink edge))
         (return-from vertex-join
@@ -261,14 +262,7 @@
 (defun vertex-edge-to (vertex direction)
   (declare (vertex vertex)
            (direction direction))
-  (let ((x (vertex-x vertex))
-        (y (vertex-y vertex)))
-    (find direction (vertex-edges vertex)
-          :test (lambda (direction edge)
-                  (eq direction (direction x
-                                           y
-                                           (edge-gateway-x edge)
-                                           (edge-gateway-y edge)))))))
+  (find direction (vertex-edges vertex) :key #'edge-direction))
 
 ;; A corridor is a non-empty set of connected tiles delimited by two
 ;; gateways.  There may be more than one corridor between 2 gateways,
@@ -676,7 +670,7 @@
     (cond
       (waypoint
        (let ((edge (waypoints-tree-parent tree x y)))
-         (direction x y (edge-gateway-x edge) (edge-gateway-y edge))))
+         (edge-direction edge)))
       (t
        (with-collect-if-minimum
          (dolist (gateway gateways)
