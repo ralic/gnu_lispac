@@ -3,7 +3,7 @@
 ;;;; License
 
 ;;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
-;;; Copyrigth (C) 2010 Mario Castelan Castro <marioxcc>
+;;; Copyrigth (C) 2010, 2011 Mario Castelan Castro <marioxcc>
 
 ;;; Special thanks to a _not_ anonymous for us, but for everybody else,
 ;;; who wrote and donated the base of lispac.
@@ -381,6 +381,10 @@
 ;; Iterate through the waypoints for which there is a direct
 ;; connection with corridor.
 ;;
+;; If given, only directions in `direction' or `directions-not' are
+;; explored or not explored, respectively; otherwise all directions
+;; are explored.  `direction' is incompabile with `direction-not'.
+;;
 ;; At the time `body' is evaluated (`gateway-x', `gateway-y') and
 ;; (`waypoint-gateway-x', `waypoint-gateway-y') if given are bound to
 ;; the origin-side and waypoint-side gateways, respectively.  I.e: The
@@ -390,6 +394,8 @@
                                    distance
                                    (waypoint-x x) (waypoint-y y)
                                    &key
+                                   directions
+                                   directions-not
                                    gateway-x
                                    gateway-y
                                    waypoint-gateway-x
@@ -408,13 +414,21 @@
          (let ((,explorer (make-explorer ,x ,y ,gateway-x ,gateway-y ,tiles)))
            (multiple-value-bind (,waypoint-x ,waypoint-y ,steps)
                (explorer-explore-to-waypoint ,explorer)
-             ,(if waypoint-gateway-x
-                  `(let ((,waypoint-gateway-x (explorer-parent-x ,explorer))
-                         (,waypoint-gateway-y (explorer-parent-y ,explorer))
-                         (,distance (1+ ,steps)))
-                     ,@body)
-                  `(let ((,distance (1+ ,steps)))
-                     ,@body))))))))
+             (when ,(cond
+                     (directions
+                      `(member (direction ,x ,y ,gateway-x ,gateway-y)
+                               ,directions))
+                     (directions-not
+                      `(not (member (direction ,x ,y ,gateway-x ,gateway-y)
+                                    ,directions-not)))
+                     (t t))
+               ,(if waypoint-gateway-x
+                    `(let ((,waypoint-gateway-x (explorer-parent-x ,explorer))
+                           (,waypoint-gateway-y (explorer-parent-y ,explorer))
+                           (,distance (1+ ,steps)))
+                       ,@body)
+                    `(let ((,distance (1+ ,steps)))
+                       ,@body)))))))))
 
 ;;;;;; Computation
 
