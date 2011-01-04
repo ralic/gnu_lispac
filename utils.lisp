@@ -1,6 +1,6 @@
 ;;; utils.lisp - Generic macros & functions.
 
-;; Copyrigth (C) 2009, 2010 Mario Castelán Castro <marioxcc>
+;; Copyrigth (C) 2009, 2010, 2011 Mario Castelán Castro <marioxcc>
 ;; Copyrigth (C) 2009, 2010 David Vázquez
 ;; Copyrigth (C) 2010 Kevin Mas Ruiz <sorancio>
 
@@ -95,6 +95,26 @@
                              (function peek-first)
                              (function peek-last)))
          ,@body))))
+
+;; `let' generator with conditional inclusion of individual bindings
+;; with a `cond'-like syntax.  For use in macros.
+;;
+;; There are 2 options for each clause: (test var init-form) bind
+;; `var' to `init-form' when `test' is true.  (test-var initform) bind
+;; `test-var' to `init-form' when `test-var' is true.
+(defmacro conditional-let ((&rest clauses) &body code)
+  (if (endp clauses)
+      `(progn ,@code)
+      (let ((clause (first clauses)))
+        (if (atom clause)
+            (error "CONDITIONAL-LET clause is not a list: ~S" clause)
+            (let ((test (first clause))
+                  (var (elt clause (- (length clause) 2)))
+                  (init-form (elt clause (- (length clause) 1))))
+              (if test
+                  `(let ((,var ,init-form))
+                     (conditional-let (,@(rest clauses)) ,@code))
+                  `(conditional-let (,@(rest clauses)) ,@code)))))))
 
 (defmacro while (condition &body code)
   `(do ()
