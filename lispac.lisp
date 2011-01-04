@@ -422,13 +422,16 @@
                       `(not (member (direction ,x ,y ,gateway-x ,gateway-y)
                                     ,directions-not)))
                      (t t))
-               ,(if waypoint-gateway-x
-                    `(let ((,waypoint-gateway-x (explorer-parent-x ,explorer))
-                           (,waypoint-gateway-y (explorer-parent-y ,explorer))
-                           (,distance (1+ ,steps)))
-                       ,@body)
-                    `(let ((,distance (1+ ,steps)))
-                       ,@body)))))))))
+               (conditional-let ((,waypoint-gateway-x
+                                  ,waypoint-gateway-x
+                                  (explorer-parent-x ,explorer))
+                                 (,waypoint-gateway-y
+                                  ,waypoint-gateway-y
+                                  (explorer-parent-y ,explorer))
+                                 (,distance
+                                  ,distance
+                                  (1+ ,steps)))
+                 ,@body))))))))
 
 ;;;;;; Computation
 
