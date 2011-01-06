@@ -437,46 +437,55 @@
 
 (defun %compute-waypoint-graph (board starting-x starting-y)
   (let* ((dimensions (array-dimensions (board-tiles board)))
-         (pending (list (make-vertex starting-x starting-y)))
+         (pending-list (list (make-vertex starting-x starting-y)))
+         (pending (make-sparse-table dimensions nil))
+         ;; Visited directions from pending vertices.
+         (visited-directions (make-hash-table :test #'eq))
          ;; Holds all visited vertices.
          (visited (make-sparse-table dimensions nil)))
-    (flet ((find-waypoint (list x y)
-             (dolist (waypoint list)
-               (when (and (= x (vertex-x waypoint))
-                          (= y (vertex-y waypoint)))
-                 (return waypoint)))))
-      (while pending
-        (let* ((current (pop pending))
-               (current-x (vertex-x current))
-               (current-y (vertex-y current)))
-          (do-connected-waypoints (board
-                                   distance
-                                   (terminal-x current-x)
-                                   (terminal-y current-y)
-                                   :gateway-x gateway-x
-                                   :gateway-y gateway-y)
-            (acond
-              ((or (stref visited terminal-x terminal-y)
-                   (find-waypoint pending terminal-x terminal-y))
+    (while pending-list
+      (let* ((current (pop pending-list))
+             (current-x (vertex-x current))
+             (current-y (vertex-y current)))
+        (do-connected-waypoints (board
+                                 distance
+                                 (terminal-x current-x)
+                                 (terminal-y current-y)
+                                 :directions-not (gethash current
+                                                          visited-directions)
+                                 :gateway-x gateway-x
+                                 :gateway-y gateway-y
+                                 :waypoint-gateway-x waypoint-gateway-x
+                                 :waypoint-gateway-y waypoint-gateway-y)
+          (when (stref visited terminal-x terminal-y)
+            (error "BUG: Visiting alredy visited node"))
+          (switch
+            ;; Vertex is new and not on pending queue.  Add it.
+            ((not (stref pending terminal-x terminal-y))
+             (let ((terminal (make-vertex terminal-x terminal-y)))
+               (push terminal pending-list)
+               (setf (stref pending terminal-x terminal-y) terminal))
+             (resume))
+            (t
+             (let ((terminal (stref pending terminal-x terminal-y)))
                (multiple-value-bind (edge freshp)
-                   (vertex-join current it
+                   (vertex-join current terminal
                                 gateway-x gateway-y
                                 distance)
                  (when freshp
-                   ;; Find complement, when present.
-                   (dolist (tentative-complement (vertex-edges it))
-                     (when (and (eq (edge-sink tentative-complement) current)
-                                (= (edge-weight tentative-complement) distance))
-                       (setf (edge-complement tentative-complement) edge)
-                       (setf (edge-complement edge) tentative-complement))))))
-              (t
-               (let ((terminal (make-vertex terminal-x terminal-y)))
-                 (push terminal pending)
-                 ;; Do this really belong here? - MXCC
-                 (vertex-join current terminal
-                              gateway-x gateway-y
-                              distance)))))
-          (setf (stref visited current-x current-y) current))))
+                   (setf (edge-complement edge)
+                         (vertex-join terminal
+                                      current
+                                      waypoint-gateway-x
+                                      waypoint-gateway-y
+                                      distance
+                                      edge)))
+                 (push (direction terminal-x terminal-y
+                                  waypoint-gateway-x waypoint-gateway-y)
+                       (gethash terminal visited-directions)))))))
+        ;; Mark as visited
+        (nilf (stref pending current-x current-y))
+        (setf (stref visited current-x current-y) current)))
     visited))
 
 ;; Compute `waypoints' slot of the given `board' according to its
