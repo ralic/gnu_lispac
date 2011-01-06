@@ -133,6 +133,7 @@ function in order to go on on th following conditions."
           (push `(,condition (go ,begin-tag)) cond-forms)
           (push begin-tag tagbody-forms)
           (push `(flet ((resume () (go ,end-tag)))
+                   (declare (ignorable #'resume))
                    (return (progn ,@code)))
                 tagbody-forms)
           (push end-tag tagbody-forms))))
