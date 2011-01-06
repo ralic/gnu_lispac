@@ -119,10 +119,10 @@
 (defmacro switch (&body clauses)
   "A `cond' compatible macro which allow the use of a `resume'
 function in order to go on on th following conditions."
-  ;; We translate this macro to a cond macro and a tagbody. Every
-  ;; entry in the cond macro will jump to a tagbody entry. The tagbody
-  ;; entry will return by default. However, we provide a `resume'
-  ;; function in order to jump to the following tagbody entry.
+  ;; Translate this macro to a `cond' macro and a `tagbody'.  Every
+  ;; entry in the cond macro will jump to a tagbody entry.  The
+  ;; tagbody entry will return by default.  A call to local `resume'
+  ;; function will jump to the following tagbody entry.
   (let (cond-forms
         tagbody-forms)
     ;; Collect cond-forms and tagbody-forms from the clausules.
