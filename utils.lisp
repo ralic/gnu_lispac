@@ -116,6 +116,33 @@
                      (conditional-let (,@(rest clauses)) ,@code))
                   `(conditional-let (,@(rest clauses)) ,@code)))))))
 
+(defmacro switch (&body clauses)
+  "A `cond' compatible macro which allow the use of a `resume'
+function in order to go on on th following conditions."
+  ;; We translate this macro to a cond macro and a tagbody. Every
+  ;; entry in the cond macro will jump to a tagbody entry. The tagbody
+  ;; entry will return by default. However, we provide a `resume'
+  ;; function in order to jump to the following tagbody entry.
+  (let (cond-forms
+        tagbody-forms)
+    ;; Collect cond-forms and tagbody-forms from the clausules.
+    (dolist (clause clauses)
+      (let ((begin-tag (gensym))
+            (end-tag (gensym)))
+        (destructuring-bind (condition &body code) clause
+          (push `(,condition (go ,begin-tag)) cond-forms)
+          (push begin-tag tagbody-forms)
+          (push `(flet ((resume () (go ,end-tag)))
+                   (return (progn ,@code)))
+                tagbody-forms)
+          (push end-tag tagbody-forms))))
+    ;; Macro expansion
+    `(block nil
+       (tagbody
+          (cond
+            ,@(nreverse cond-forms))
+          ,@(nreverse tagbody-forms)))))
+
 (defmacro while (condition &body code)
   `(do ()
        ((not ,condition))
