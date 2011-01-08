@@ -542,6 +542,11 @@
 (defun waypoints-tree-distance (tree waypoint)
   (gethash waypoint (waypoints-tree-distances tree)))
 
+;; Is `waypoint' a gateway to the center of `tree'?.  The result is
+;; only meaningful if the center itself is on a corridor.
+(defun waypoints-tree-gateway-p (tree waypoint)
+  (null (gethash waypoint (waypoints-tree-parents tree))))
+
 (defun board-compute-vertices-parents (board x y &optional max-distance)
   (declare (board board)
            (ignore max-distance))
