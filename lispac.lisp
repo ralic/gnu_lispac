@@ -515,8 +515,8 @@
   corridor
   ;; Distance to the `corridor' reference vertex.
   location
-  ;; A sparse array of edges and `nil'.  `nil' means the tile is
-  ;; either a gateway or the center.
+  ;; A hash-table of edges and `nil'.  `nil' means the tile is either
+  ;; a gateway or the center.
   parents
   ;; Distance from waypoints to center.
   distances)
@@ -536,11 +536,11 @@
             (corridor *board* center-x center-y)))
     waypoints-tree))
 
-(defun waypoints-tree-parent (tree x y)
-  (stref (waypoints-tree-parents tree) x y))
+(defun waypoints-tree-parent (tree waypoint)
+  (gethash waypoint (waypoints-tree-parents tree)))
 
-(defun waypoints-tree-distance (tree x y)
-  (stref (waypoints-tree-distances tree) x y))
+(defun waypoints-tree-distance (tree waypoint)
+  (gethash waypoint (waypoints-tree-distances tree)))
 
 (defun board-compute-vertices-parents (board x y &optional max-distance)
   (declare (board board)
@@ -552,12 +552,8 @@
         ;; gateways); and finally the vertex itself.
         (pending (make-instance 'cl-heap:binary-heap
                                 :key #'first))
-        (distances (make-sparse-table (list (board-width board)
-                                            (board-height board))
-                                      most-positive-fixnum))
-        (predecessors (make-sparse-table (list (board-width board)
-                                               (board-height board))
-                                         nil)))
+        (distances (make-hash-table :test #'eq))
+        (predecessors (make-hash-table :test #'eq)))
     ;; Enqueue starting tiles.
     (if (waypointp tiles x y)
         (cl-heap:enqueue pending (waypoint board x y) 0)
@@ -577,17 +573,18 @@
           for y = (vertex-y current)
           ;; Don't (re-)visit `current' if it has been alredy visited
           ;; by another, cheaper path.
-          when (< cost (stref distances x y))
+          when (< cost (gethash current
+                                distances
+                                most-positive-fixnum))
           do (progn
-               (setf (stref distances x y) cost)
-               (setf (stref predecessors x y) predecessor)
+               (setf (gethash current distances) cost)
+               (setf (gethash current predecessors) predecessor)
                (dolist (edge (vertex-edges current))
                  (let* ((neighbor (edge-sink edge))
-                        (neighbor-x (vertex-x neighbor))
-                        (neighbor-y (vertex-y neighbor))
                         (edge-weight (edge-weight edge))
                         (total (+ cost edge-weight)))
-                   (when (< total (stref distances neighbor-x neighbor-y))
+                   (when (< total
+                            (gethash neighbor distances most-positive-fixnum))
                      (cl-heap:add-to-heap pending
                                           (list total
                                                 (edge-complement edge)
