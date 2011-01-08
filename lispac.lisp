@@ -550,8 +550,7 @@
         ;; queue) consists of a list.  In order: Tentative cost;
         ;; Tentative predecessor (An `edge' or `nil' for the
         ;; gateways); and finally the vertex itself.
-        (pending (make-instance 'cl-heap:binary-heap
-                                :key #'first))
+        (pending (make-instance 'cl-heap:binary-heap :key #'first))
         (distances (make-hash-table :test #'eq))
         (predecessors (make-hash-table :test #'eq)))
     ;; Enqueue starting tiles.
