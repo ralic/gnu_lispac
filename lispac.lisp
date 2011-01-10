@@ -223,6 +223,10 @@
   y
   edges)
 
+(defun vertex-position (vertex)
+  (declare (vertex vertex))
+  (values (vertex-x vertex) (vertex-y vertex)))
+
 ;; Edges are directed (One-way).  The source vertex is implicit; only
 ;; the sink vertex is stored.
 (defstruct (edge (:constructor make-edge
