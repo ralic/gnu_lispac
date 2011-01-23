@@ -268,73 +268,6 @@
            (direction direction))
   (find direction (vertex-edges vertex) :key #'edge-direction))
 
-;; A corridor is a non-empty set of connected tiles delimited by two
-;; gateways.  There may be more than one corridor between 2 gateways,
-;; but always exactly one edge (And its `complement').  For instance:
-;;
-;;   +-W-+
-;;   | | |
-;;   | | |
-;;   +-W-+
-;;
-;; Corridor structure represent a corridor, based on the topmost
-;; leftmost waypoint and the direction of the first tile.  For
-;; instance, the corridor maked with double line would be represented
-;; as a `corridor' whose `vertex' is `W', and `direction' is `:right':
-;;
-;;   -W===V-
-;;    |   |
-;;    +---+
-;;
-;; A single tile may be precisely identified in relation to the
-;; waypoint graph by the corrider where it's located, and the distance
-;; to one of the delimiting gateways.
-;;
-;; When there is more than one possible value for direction first one
-;; in a clockwise order starting from `:left' takes precedence.  This
-;; is necessary to make coherent the representation of loops.
-(defstruct corridor
-  (vertex nil :type vertex)
-  (direction nil :type direction))
-
-;; Compute the corridor which contains (`x', `y').  Return
-;; the corridor and the distance from the reference vertex in the
-;; reference direction.
-;;
-;; This is computationally expensive.  Shouldn't be used in main loop.
-(defun corridor (board x y)
-  (assert (= 2 (tile-degree (board-tiles board) x y)))
-  (let (reference-vertex
-        reference-direction
-        distance-to-reference-vertex)
-    (do-connected-waypoints (board
-                             distance
-                             (vertex-x x)
-                             (vertex-y y)
-                             :waypoint-gateway-x gateway-x
-                             :waypoint-gateway-y gateway-y)
-      (let ((vertex (waypoint board vertex-x vertex-y))
-            (direction (direction vertex-x vertex-y
-                                  gateway-x gateway-y)))
-        (with-slots (x y) reference-vertex
-          (when (or (not reference-vertex) ; First iteration
-                    (topmost-leftmost-p vertex-x vertex-y
-                                        x y)
-                    (and (= x vertex-x)
-                         (= y vertex-y)
-                         (direction< direction reference-direction)))
-            (setf reference-vertex vertex)
-            (setf reference-direction direction)
-            (setf distance-to-reference-vertex distance)))))
-    (values (make-corridor :vertex reference-vertex
-                           :direction reference-direction)
-            distance-to-reference-vertex)))
-
-(defun corridor= (a b)
-  (declare (corridor a b))
-  (and (eq (corridor-vertex a) (corridor-vertex b))
-       (eq (corridor-direction a) (corridor-direction b))))
-
 ;;;;;; Exploreres
 
 ;;; TODO: Write documentation
@@ -502,6 +435,75 @@
           (setf (board-waypoints board)
                 (%compute-waypoint-graph board x y))
           (return-from board-compute-waypoint-graph))))))
+
+;;;;;; Corridors
+
+;; A corridor is a non-empty set of connected tiles delimited by two
+;; gateways.  There may be more than one corridor between 2 gateways,
+;; but always exactly one edge (And its `complement').  For instance:
+;;
+;;   +-W-+
+;;   | | |
+;;   | | |
+;;   +-W-+
+;;
+;; Corridor structure represent a corridor, based on the topmost
+;; leftmost waypoint and the direction of the first tile.  For
+;; instance, the corridor maked with double line would be represented
+;; as a `corridor' whose `vertex' is `W', and `direction' is `:right':
+;;
+;;   -W===V-
+;;    |   |
+;;    +---+
+;;
+;; A single tile may be precisely identified in relation to the
+;; waypoint graph by the corrider where it's located, and the distance
+;; to one of the delimiting gateways.
+;;
+;; When there is more than one possible value for direction first one
+;; in a clockwise order starting from `:left' takes precedence.  This
+;; is necessary to make coherent the representation of loops.
+(defstruct corridor
+  (vertex nil :type vertex)
+  (direction nil :type direction))
+
+;; Compute the corridor which contains (`x', `y').  Return
+;; the corridor and the distance from the reference vertex in the
+;; reference direction.
+;;
+;; This is computationally expensive.  Shouldn't be used in main loop.
+(defun corridor (board x y)
+  (assert (= 2 (tile-degree (board-tiles board) x y)))
+  (let (reference-vertex
+        reference-direction
+        distance-to-reference-vertex)
+    (do-connected-waypoints (board
+                             distance
+                             (vertex-x x)
+                             (vertex-y y)
+                             :waypoint-gateway-x gateway-x
+                             :waypoint-gateway-y gateway-y)
+      (let ((vertex (waypoint board vertex-x vertex-y))
+            (direction (direction vertex-x vertex-y
+                                  gateway-x gateway-y)))
+        (with-slots (x y) reference-vertex
+          (when (or (not reference-vertex) ; First iteration
+                    (topmost-leftmost-p vertex-x vertex-y
+                                        x y)
+                    (and (= x vertex-x)
+                         (= y vertex-y)
+                         (direction< direction reference-direction)))
+            (setf reference-vertex vertex)
+            (setf reference-direction direction)
+            (setf distance-to-reference-vertex distance)))))
+    (values (make-corridor :vertex reference-vertex
+                           :direction reference-direction)
+            distance-to-reference-vertex)))
+
+(defun corridor= (a b)
+  (declare (corridor a b))
+  (and (eq (corridor-vertex a) (corridor-vertex b))
+       (eq (corridor-direction a) (corridor-direction b))))
 
 ;;;;;; Trees
 
