@@ -303,18 +303,6 @@
           do (explorer-step explorer)
           finally (return (values current-x current-y distance)))))
 
-(defun connected-waypoints (board x y)
-  (with-collecting
-    (do-connected-waypoints (board
-                             distance
-                             (waypoint-x x)
-                             (waypoint-y y)
-                             :gateway-x gateway-x
-                             :gateway-y gateway-y)
-      (collect (list (direction x y gateway-x gateway-y)
-                     distance
-                     (waypoint board waypoint-x waypoint-y))))))
-
 ;; Iterate through the waypoints for which there is a direct
 ;; connection with corridor.
 ;;
@@ -369,6 +357,18 @@
                                   ,distance
                                   (1+ ,steps)))
                  ,@body))))))))
+
+(defun connected-waypoints (board x y)
+  (with-collecting
+    (do-connected-waypoints (board
+                             distance
+                             (waypoint-x x)
+                             (waypoint-y y)
+                             :gateway-x gateway-x
+                             :gateway-y gateway-y)
+      (collect (list (direction x y gateway-x gateway-y)
+                     distance
+                     (waypoint board waypoint-x waypoint-y))))))
 
 ;;;;;; Computation
 
