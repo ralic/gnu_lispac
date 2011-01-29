@@ -474,9 +474,9 @@
 ;; This is computationally expensive.  Shouldn't be used in main loop.
 (defun corridor (board x y)
   (assert (= 2 (tile-degree (board-tiles board) x y)))
-  (let (reference-vertex
-        reference-direction
-        distance-to-reference-vertex)
+  (let (stored-vertex
+        stored-direction
+        distance-to-stored-vertex)
     (do-connected-waypoints (board
                              distance
                              (vertex-x x)
@@ -486,19 +486,27 @@
       (let ((vertex (waypoint board vertex-x vertex-y))
             (direction (direction vertex-x vertex-y
                                   gateway-x gateway-y)))
-        (with-slots (x y) reference-vertex
-          (when (or (not reference-vertex) ; First iteration
-                    (topmost-leftmost-p vertex-x vertex-y
-                                        x y)
-                    (and (= x vertex-x)
-                         (= y vertex-y)
-                         (direction< direction reference-direction)))
-            (setf reference-vertex vertex)
-            (setf reference-direction direction)
-            (setf distance-to-reference-vertex distance)))))
-    (values (make-corridor :vertex reference-vertex
-                           :direction reference-direction)
-            distance-to-reference-vertex)))
+        (with-slots (x y) stored-vertex
+          (cond
+            ;; First iteration.
+            ((not stored-vertex)
+             (setf stored-vertex vertex)
+             (setf stored-direction direction)
+             (setf distance-to-stored-vertex distance))
+            ;; Last iteration.
+            (t
+             (return-from corridor
+               (if (or (topmost-leftmost-p vertex-x vertex-y
+                                           x y)
+                       (and (= x vertex-x)
+                            (= y vertex-y)
+                            (direction< direction stored-direction)))
+                   (values (make-corridor :vertex vertex
+                                          :direction direction)
+                           distance-to-stored-vertex)
+                   (values (make-corridor :vertex stored-vertex
+                                          :direction stored-direction)
+                           distance-to-stored-vertex))))))))))
 
 (defun corridor= (a b)
   (declare (corridor a b))
