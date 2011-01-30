@@ -465,6 +465,8 @@
 ;; is necessary to make coherent the representation of loops.
 (defstruct corridor
   (vertex nil :type vertex)
+  ;; Vertex at the other end (May or may not be the same as `vertex').
+  (opposite nil :type vertex)
   (direction nil :type direction))
 
 ;; Compute the corridor which contains (`x', `y').  Return
@@ -502,9 +504,11 @@
                             (= y vertex-y)
                             (direction< direction stored-direction)))
                    (values (make-corridor :vertex vertex
+                                          :opposite stored-vertex
                                           :direction direction)
                            distance-to-stored-vertex)
                    (values (make-corridor :vertex stored-vertex
+                                          :opposite vertex
                                           :direction stored-direction)
                            distance-to-stored-vertex))))))))))
 
