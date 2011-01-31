@@ -469,6 +469,15 @@
   (opposite nil :type vertex)
   (direction nil :type direction))
 
+(defun reference (vertex-a direction-a vertex-b direction-b)
+  (with-slots ((a-x x) (a-y y)) vertex-a
+    (with-slots ((b-x x) (b-y y)) vertex-b
+      (or (topmost-leftmost-p a-x a-y
+                              b-x b-y)
+          (and (= a-x b-x)
+               (= a-y a-y)
+               (direction< direction-a direction-b))))))
+
 ;; Compute the corridor which contains (`x', `y').  Return
 ;; the corridor and the distance from the reference vertex in the
 ;; reference direction.
@@ -488,29 +497,24 @@
       (let ((vertex (waypoint board vertex-x vertex-y))
             (direction (direction vertex-x vertex-y
                                   gateway-x gateway-y)))
-        (with-slots (x y) stored-vertex
-          (cond
-            ;; First iteration.
-            ((not stored-vertex)
-             (setf stored-vertex vertex)
-             (setf stored-direction direction)
-             (setf distance-to-stored-vertex distance))
-            ;; Last iteration.
-            (t
-             (return-from corridor
-               (if (or (topmost-leftmost-p vertex-x vertex-y
-                                           x y)
-                       (and (= x vertex-x)
-                            (= y vertex-y)
-                            (direction< direction stored-direction)))
-                   (values (make-corridor :vertex vertex
-                                          :opposite stored-vertex
-                                          :direction direction)
-                           distance-to-stored-vertex)
-                   (values (make-corridor :vertex stored-vertex
-                                          :opposite vertex
-                                          :direction stored-direction)
-                           distance-to-stored-vertex))))))))))
+        (cond
+          ;; First iteration.
+          ((not stored-vertex)
+           (setf stored-vertex vertex)
+           (setf stored-direction direction)
+           (setf distance-to-stored-vertex distance))
+          ;; Last iteration.
+          (t
+           (return-from corridor
+             (if (reference vertex direction stored-vertex stored-direction)
+                 (values (make-corridor :vertex vertex
+                                        :opposite stored-vertex
+                                        :direction direction)
+                         distance)
+                 (values (make-corridor :vertex stored-vertex
+                                        :opposite vertex
+                                        :direction stored-direction)
+                         distance-to-stored-vertex)))))))))
 
 (defun corridor= (a b)
   (declare (corridor a b))
