@@ -227,6 +227,12 @@
   (declare (vertex vertex))
   (values (vertex-x vertex) (vertex-y vertex)))
 
+(defun vertex-position-= (vertex x y)
+  (declare (vertex vertex)
+           (fixnum x y))
+  (and (= (vertex-x vertex) x)
+       (= (vertex-y vertex) y)))
+
 ;; Edges are directed (One-way).  The source vertex is implicit; only
 ;; the sink vertex is stored.
 (defstruct (edge (:constructor make-edge
