@@ -807,6 +807,14 @@
              reference-gateway
              opposite-gateway))))))
 
+;; Move `tracker' towards the center of `tree' and return the
+;; direction it just moved to.  If `tracker' is alredy there, return
+;; `nil' and don't move.
+(defun tracker-climb-tree (tracker tree)
+  (let ((parent (tracker-parent tracker tree)))
+    (when parent (tracker-move tracker parent))
+    parent))
+
 ;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
