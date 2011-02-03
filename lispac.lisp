@@ -655,18 +655,23 @@
 ;; and Y) or relative (Relative to the waypoint graph) terms.
 
 ;; A position in the board, and hence a tracker, can only be in either
-;; a waypoint or a corridor.  When the tracker is on a waypoint
-;; `waypoint' references it, otherwise `gateways' lists the 2
-;; waypoints than delimit the corridor, the distance to these and the
-;; direction of the next tile to them through the corridor (From the
-;; tracker viewpoint).  Note `waypoint' and `gateways' are exclusive:
-;; Always exactly one is `nil' and the other is not.
+;; a waypoint or a corridor.  This is represented by `waypoint' and
+;; `corridor' slots respectively.
 (defstruct (tracker (:constructor %make-tracker))
   x
   y
   board
-  ;; List of (direction distance vertex).
-  gateways
+  ;; Which corridor is the `tracker' on, if any?.  `nil' otherwise.
+  corridor
+  ;; Local copy for simplicity and maybe efficiency.
+  corridor-length
+  ;; Direction to the vertex used as reference in corridor
+  ;; description.
+  reference-gateway
+  ;; Direction to the other end of the corridor.
+  opposite-gateway
+  ;; Distance to the reference vertex by the reference end.
+  location
   ;; Which tile is the `tracker' on, if any?.  `nil' otherwise.
   waypoint)
 
@@ -678,67 +683,95 @@
                     :board board
                     :waypoint it))
     (t
-     (%make-tracker :x x
-                    :y y
-                    :board board
-                    :gateways (connected-waypoints board x y)))))
+     (multiple-value-bind (corridor location gateway opposite-gateway)
+         (corridor board x y)
+       (%make-tracker :x x
+                      :y y
+                      :board board
+                      :corridor corridor
+                      :location location
+                      :reference-gateway gateway
+                      :opposite-gateway opposite-gateway)))))
 
 ;; Move the `tracker' one tile in the give `direction'.
 
 ;; TODO: Add "collision" checking (Not every direction is valid from
 ;; every possition in every possible board).
 (defun tracker-move (tracker direction)
-  (with-slots (x y board gateways waypoint) tracker
-    (multiple-value-bind (new-x new-y)
-        (displace x y direction)
-      (cond
-        (waypoint
-         (let* ((edge (vertex-edge-to waypoint direction)))
-           (cond
-             ;; From waypoint to waypoint move.
-             ((= 1 (edge-weight edge))
-              (setf waypoint (edge-sink edge)))
-             ;; From waypoint to corridor move.
-             (t
-              (collect-setf gateways
-                (do-neighbor-tiles (board-tiles board)
-                    (neighbor-x new-x)
-                    (neighbor-y new-y)
-                  (let ((direction (direction new-x new-y
-                                              neighbor-x neighbor-y)))
-                    (collect (if (and (= x neighbor-x)
-                                      (= y neighbor-y))
-                                 (list direction 1 waypoint)
-                                 (list direction
-                                       (1- (edge-weight edge))
-                                       (edge-sink edge)))))))
-              (nilf waypoint)))))
-        (t
-         ;; TODO: Find a more elegant way to do this.
-         (let ((next (find direction gateways :key #'first))
-               (past (find direction gateways :key #'first :test-not #'eq)))
-           (cond
-             ;; Corridor to waypoint move.
-             ((= 1 (second next))       ; It's 1 before decrement!.
-              (setf waypoint (third next))
-              (nilf gateways))
-             ;; Corridor to corridor move.
-             (t
-              (collect-setf gateways
-                (do-neighbor-tiles (board-tiles board)
-                    (neighbor-x new-x)
-                    (neighbor-y new-y)
-                  (let ((direction (direction new-x new-y
-                                              neighbor-x neighbor-y)))
-                    (collect (if (and (= x neighbor-x)
-                                      (= y neighbor-y))
-                                 (list direction
-                                       (1+ (second past))
-                                       (third past))
-                                 (list direction
-                                       (1- (second next))
-                                       (third next)))))))))))))
-    (displacef x y direction)))
+  (with-slots (x
+               y
+               board
+               corridor
+               corridor-length
+               location
+               reference-gateway
+               opposite-gateway
+               waypoint)
+      tracker
+    (with-slots ((reference vertex) opposite) corridor
+      (let (new-x new-y adjacent-x adjacent-y new-to-adjacent new-to-old)
+        (setf (values new-x new-y) (displace x y direction))
+        (do-neighbor-tiles (board-tiles board)
+            (neighbor-x new-x)
+            (neighbor-y new-y)
+          (when (or (/= x neighbor-x)
+                    (/= y neighbor-y))
+            (setf adjacent-x neighbor-x)
+            (setf adjacent-y neighbor-y)))
+        (setf new-to-adjacent (direction new-x new-y
+                                         adjacent-x adjacent-y))
+        (setf new-to-old (direction new-x new-y x y))
+        (print new-to-adjacent)
+        (print new-to-old)
+        (cond
+          (waypoint
+           (let ((edge (vertex-edge-to waypoint direction)))
+             (cond
+               ;; From waypoint to waypoint move.
+               ((= 1 (edge-weight edge))
+                (setf waypoint (edge-sink edge)))
+               ;; From waypoint to corridor move.
+               (t
+                (setf corridor-length (edge-weight edge))
+                (let ((direction (edge-direction edge))
+                      (end (edge-sink edge))
+                      (end-direction (edge-direction (edge-complement edge))))
+                  (if (reference waypoint direction end end-direction)
+                      (setf corridor (make-corridor :vertex waypoint
+                                                    :opposite end
+                                                    :direction direction)
+                            location 1
+                            reference-gateway new-to-old
+                            opposite-gateway new-to-adjacent)
+                      (setf corridor (make-corridor :vertex end
+                                                    :opposite waypoint
+                                                    :direction end-direction)
+                            location (1- corridor-length)
+                            reference-gateway new-to-adjacent
+                            opposite-gateway new-to-old)))
+                (nilf waypoint)))))
+          ;; Corridor to waypoint move.
+          ((vertex-position-= reference new-x new-y)
+           (setf waypoint reference)
+           (setf corridor nil)
+           (setf location nil))
+          ((vertex-position-= (corridor-opposite corridor) new-x new-y)
+           (setf waypoint (corridor-opposite corridor))
+           (setf corridor nil)
+           (setf location nil))
+          ;; Corridor to corridor move.
+          ((eq direction reference-gateway)
+           (decf location)
+           (setf reference-gateway new-to-adjacent)
+           (setf opposite-gateway new-to-old))
+          ((eq direction opposite-gateway)
+           (incf location)
+           (setf reference-gateway new-to-old)
+           (setf opposite-gateway new-to-adjacent))
+          (t
+           (error "BUG: No specific case matched.")))))
+    (displacef x y direction))
+  (values))
 
 (defun tracker-parent (tracker tree)
   (with-slots (x y waypoint gateways) tracker
