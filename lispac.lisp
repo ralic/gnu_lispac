@@ -553,8 +553,8 @@
   corridor
   ;; Distance to the `corridor' reference vertex.
   location
-  ;; A hash-table of edges and `nil'.  `nil' means the tile is either
-  ;; a gateway or the center.
+  ;; A hash-table of directions and `nil'.  `nil' means the waypoint
+  ;; is the center.
   parents
   ;; Distance from waypoints to center.
   distances)
@@ -600,10 +600,16 @@
     (if (waypointp tiles x y)
         (cl-heap:enqueue pending (waypoint board x y) 0)
         (do-connected-waypoints
-            (board distance (neighbor-x x) (neighbor-y y))
+            (board
+             distance
+             (neighbor-x x)
+             (neighbor-y y)
+             :waypoint-gateway-x gateway-x
+             :waypoint-gateway-y gateway-y)
           (cl-heap:add-to-heap pending
                                (list distance
-                                     nil
+                                     (direction neighbor-x neighbor-y
+                                                gateway-x gateway-y)
                                      (waypoint board neighbor-x neighbor-y)))))
     ;; Perform a uniform cost serach.
     (loop until (cl-heap:is-empty-heap-p pending)
@@ -624,13 +630,12 @@
                (dolist (edge (vertex-edges current))
                  (let* ((neighbor (edge-sink edge))
                         (edge-weight (edge-weight edge))
-                        (total (+ cost edge-weight)))
+                        (total (+ cost edge-weight))
+                        (direction (edge-direction (edge-complement edge))))
                    (when (< total
                             (gethash neighbor distances most-positive-fixnum))
                      (cl-heap:add-to-heap pending
-                                          (list total
-                                                (edge-complement edge)
-                                                neighbor)))))))
+                                          (list total direction neighbor)))))))
     (values predecessors distances)))
 
 (defun board-compute-waypoint-tree (board center-x center-y)
