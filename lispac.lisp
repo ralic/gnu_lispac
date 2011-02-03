@@ -484,30 +484,36 @@
                (= a-y a-y)
                (direction< direction-a direction-b))))))
 
-;; Compute the corridor which contains (`x', `y').  Return
-;; the corridor and the distance from the reference vertex in the
-;; reference direction.
+;; Compute the corridor which contains (`x', `y').  Return the
+;; corridor, the distance from the reference vertex in the reference
+;; direction, the direction to the reference vertex and the direction to
+;; the other vertex.
 ;;
 ;; This is computationally expensive.  Shouldn't be used in main loop.
 (defun corridor (board x y)
   (assert (= 2 (tile-degree (board-tiles board) x y)))
   (let (stored-vertex
         stored-direction
+        stored-gateway
         distance-to-stored-vertex)
     (do-connected-waypoints (board
                              distance
                              (vertex-x x)
                              (vertex-y y)
-                             :waypoint-gateway-x gateway-x
-                             :waypoint-gateway-y gateway-y)
+                             :gateway-x gateway-x
+                             :gateway-y gateway-y
+                             :waypoint-gateway-x waypoint-gateway-x
+                             :waypoint-gateway-y waypoint-gateway-y)
       (let ((vertex (waypoint board vertex-x vertex-y))
             (direction (direction vertex-x vertex-y
-                                  gateway-x gateway-y)))
+                                  waypoint-gateway-x waypoint-gateway-y))
+            (gateway (direction x y gateway-x gateway-y)))
         (cond
           ;; First iteration.
           ((not stored-vertex)
            (setf stored-vertex vertex)
            (setf stored-direction direction)
+           (setf stored-gateway gateway)
            (setf distance-to-stored-vertex distance))
           ;; Last iteration.
           (t
@@ -516,11 +522,15 @@
                  (values (make-corridor :vertex vertex
                                         :opposite stored-vertex
                                         :direction direction)
-                         distance)
+                         distance
+                         gateway
+                         stored-gateway)
                  (values (make-corridor :vertex stored-vertex
                                         :opposite vertex
                                         :direction stored-direction)
-                         distance-to-stored-vertex)))))))))
+                         distance-to-stored-vertex
+                         stored-gateway
+                         gateway)))))))))
 
 (defun corridor= (a b)
   (declare (corridor a b))
