@@ -779,22 +779,33 @@
   (values))
 
 (defun tracker-parent (tracker tree)
-  (with-slots (x y waypoint gateways) tracker
+  (with-slots (x
+               y
+               waypoint
+               corridor
+               location
+               reference-gateway
+               opposite-gateway)
+      tracker
     (cond
+      ((with-slots (center-x center-y) tree
+         (and (= x center-x) (= y center-y)))
+       nil)
       (waypoint
-       (let ((edge (waypoints-tree-parent tree x y)))
-         (edge-direction edge)))
+       (waypoints-tree-parent tree waypoint))
+      ((corridor= corridor (waypoints-tree-corridor tree))
+       (if (> location (waypoints-tree-location tree))
+           reference-gateway
+           opposite-gateway))
+      ;; `tracker' is on a corridor which don't contains `tree'.
       (t
-       (with-collect-if-minimum
-         (dolist (gateway gateways)
-           (let* ((waypoint (third gateway))
-                  ;; Distance from vertex to center.
-                  (distance
-                   (waypoints-tree-parent tree
-                                          (vertex-x waypoint)
-                                          (vertex-y waypoint))))
-             (collect-if-minimum (+ (second gateway) distance)
-                                 (first gateway)))))))))
+       (let ((reference-vertex-distance
+              (waypoints-tree-distance tree (corridor-vertex corridor)))
+             (opposite-vertex-distance
+              (waypoints-tree-distance tree (corridor-opposite corridor))))
+         (if (< reference-vertex-distance opposite-vertex-distance)
+             reference-gateway
+             opposite-gateway))))))
 
 ;;;;; Generation and loading
 
