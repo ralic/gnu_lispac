@@ -889,7 +889,17 @@
    (controller
     :initarg :controller
     :type function
-    :accessor unit-controller)))
+    :accessor unit-controller)
+   (tracker
+    :initarg :tracker
+    :type tracker
+    :accessor unit-tracker)))
+
+(defmethod initialize-instance :after ((unit unit) &rest initargs &key board)
+  (declare (ignore initargs))
+  (with-slots (x y tracker) unit
+    (with-unit-boundary (unit)
+      (setf tracker (make-tracker board left top)))))
 
 (defgeneric draw (unit))
 
@@ -920,12 +930,12 @@
 ;; Note: We can't corretly move more than one tile.
 (defmethod move-unit ((unit unit) pixels direction)
   (declare ;; (direction direction) and define direction type - MXCC
-           (fixnum pixels))
-  (let ((board-width (board-width *board*))
-        (board-height (board-height *board*))
-        (r (/ *tile-size* 2)))
-    (with-slots (x y) unit
-      (with-unit-boundary (unit)
+   (fixnum pixels))
+  (with-unit-boundary (unit)
+    (let ((board-width (board-width *board*))
+          (board-height (board-height *board*))
+          (r (/ *tile-size* 2)))
+      (with-slots (x y tracker) unit
         (case direction
           (:up
            (decf* y (min pixels
@@ -966,7 +976,12 @@
                                (- (* *tile-size* (+ right 2)) r))
                               (t
                                (- (* *tile-size* (1+ right)) r)))
-                            x)))))))))
+                            x)))))
+        (with-unit-boundary (unit "NEW-")
+          (when (or (/= new-left left) (/= new-top top))
+            (tracker-move tracker (direction left top new-left new-top))
+            (assert (and (= (tracker-x tracker) new-left)
+                         (= (tracker-y tracker) new-top)))))))))
 
 ;; Move `unit' up to `max-pixels' to the begin of the next
 ;; left/right/top/left row or column according to `direction'.  Return
@@ -1471,6 +1486,7 @@
       (initialise-default-font *font-10x20*)
       (setf *pacman*
             (make-instance 'pacman
+                           :board *board*
                            :controller #'standard-controller))
       (setf *pacman-gradient*
             (make-array (list (board-width *board*) (board-height *board*))
