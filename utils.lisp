@@ -244,8 +244,9 @@ function in order to go on on th following conditions."
        ,@body)))
 
 (defmacro defconst (name value)
-  `(unless (boundp (quote ,name))
-     (defconstant ,name ,value)))
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (unless (boundp (quote ,name))
+       (defconstant ,name ,value))))
 
 (defmacro define-dumb-printer (class)
   `(defmethod print-object ((object ,class) stream)
