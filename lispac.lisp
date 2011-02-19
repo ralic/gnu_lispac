@@ -895,14 +895,6 @@
     :type tracker
     :accessor unit-tracker)))
 
-(defmethod initialize-instance :after ((unit unit) &rest initargs &key board)
-  (declare (ignore initargs))
-  (with-slots (x y tracker) unit
-    (with-unit-boundary (unit)
-      (setf tracker (make-tracker board left top)))))
-
-(defgeneric draw (unit))
-
 ;; Tiles wich pacman use as a square
 (defmacro with-unit-boundary ((unit &optional prefix) &body body)
   (flet ((intern* (name)
@@ -921,6 +913,14 @@
                   (,right (floor (+ ,x ,r -1) *tile-size*))
                   (,bottom (floor (+ ,y ,r -1) *tile-size*)))
              ,@body))))))
+
+(defmethod initialize-instance :after ((unit unit) &rest initargs &key board)
+  (declare (ignore initargs))
+  (with-slots (x y tracker) unit
+    (with-unit-boundary (unit)
+      (setf tracker (make-tracker board left top)))))
+
+(defgeneric draw (unit))
 
 ;;;;; Generic movement
 
