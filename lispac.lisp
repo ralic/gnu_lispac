@@ -813,6 +813,16 @@
     (when parent (tracker-move tracker parent))
     parent))
 
+;; Debugging.
+(defun tracker-exhaust-moves (tracker tree climbp)
+  (loop for direction = (if climbp
+                            (tracker-parent tracker tree)
+                            (tracker-branch tracker tree))
+        while direction
+        do (progn
+             (with-slots (x y) tracker (format t "~d,~d: ~a~%" x y direction))
+             (tracker-move tracker direction))))
+
 ;;;;; Generation and loading
 
 (defun generate-dumb-board (width height)
