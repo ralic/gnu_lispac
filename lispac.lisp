@@ -726,8 +726,6 @@
         (setf new-to-adjacent (direction new-x new-y
                                          adjacent-x adjacent-y))
         (setf new-to-old (direction new-x new-y x y))
-        (print new-to-adjacent)
-        (print new-to-old)
         (cond
           (waypoint
            (let ((edge (vertex-edge-to waypoint direction)))
