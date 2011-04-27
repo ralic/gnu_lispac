@@ -694,6 +694,10 @@
                       :y y
                       :board board
                       :corridor corridor
+                      :corridor-length (edge-weight
+                                        (vertex-edge-to
+                                         (corridor-vertex corridor)
+                                         (corridor-direction corridor)))
                       :location location
                       :reference-gateway gateway
                       :opposite-gateway opposite-gateway)))))
