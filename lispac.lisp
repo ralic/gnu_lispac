@@ -594,7 +594,9 @@
 ;; Is `waypoint' a gateway to the center of `tree'?.  The result is
 ;; only meaningful if the center itself is on a corridor.
 (defun waypoints-tree-gateway-p (tree waypoint)
-  (null (gethash waypoint (waypoints-tree-parents tree))))
+  (with-slots (corridor) tree
+    (or (eq waypoint (corridor-vertex corridor))
+        (eq waypoint (corridor-opposite corridor)))))
 
 (defun board-compute-vertices-parents (board x y &optional max-distance)
   (declare (board board)
