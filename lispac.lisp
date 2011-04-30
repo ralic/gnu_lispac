@@ -442,6 +442,17 @@
                 (%compute-waypoint-graph board x y))
           (return-from board-compute-waypoint-graph))))))
 
+;; For an arbitrarial tile (`a', `b') return the direction of an
+;; adjacent tile other than (`x', `y').  Specifically, for any tile in
+;; a corridor, return the opposite neighbor.
+(defun corridor-other-adjacent (board a b x y)
+  (do-neighbor-tiles (board-tiles board)
+      (neighbor-x a)
+      (neighbor-y b)
+    (when (or (/= neighbor-x x)
+              (/= neighbor-y y))
+      (return (direction a b neighbor-x neighbor-y)))))
+
 ;;;;;; Corridors
 
 ;; A corridor is a non-empty set of connected tiles delimited by two
@@ -717,66 +728,57 @@
                opposite-gateway
                waypoint)
       tracker
-    (with-slots ((reference vertex) opposite) corridor
-      (let (new-x new-y adjacent-x adjacent-y new-to-adjacent new-to-old)
-        (setf (values new-x new-y) (displace x y direction))
-        (do-neighbor-tiles (board-tiles board)
-            (neighbor-x new-x)
-            (neighbor-y new-y)
-          (when (or (/= x neighbor-x)
-                    (/= y neighbor-y))
-            (setf adjacent-x neighbor-x)
-            (setf adjacent-y neighbor-y)))
-        (setf new-to-adjacent (direction new-x new-y
-                                         adjacent-x adjacent-y))
-        (setf new-to-old (direction new-x new-y x y))
-        (cond
-          (waypoint
-           (let ((edge (vertex-edge-to waypoint direction)))
-             (cond
-               ;; From waypoint to waypoint move.
-               ((= 1 (edge-weight edge))
-                (setf waypoint (edge-sink edge)))
-               ;; From waypoint to corridor move.
-               (t
-                (setf corridor-length (edge-weight edge))
-                (let ((direction (edge-direction edge))
-                      (end (edge-sink edge))
-                      (end-direction (edge-direction (edge-complement edge))))
-                  (if (reference waypoint direction end end-direction)
-                      (setf corridor (make-corridor :vertex waypoint
-                                                    :opposite end
-                                                    :direction direction)
-                            location 1
-                            reference-gateway new-to-old
-                            opposite-gateway new-to-adjacent)
-                      (setf corridor (make-corridor :vertex end
-                                                    :opposite waypoint
-                                                    :direction end-direction)
-                            location (1- corridor-length)
-                            reference-gateway new-to-adjacent
-                            opposite-gateway new-to-old)))
-                (nilf waypoint)))))
-          ;; Corridor to waypoint move.
-          ((vertex-position-= reference new-x new-y)
-           (setf waypoint reference)
-           (setf corridor nil)
-           (setf location nil))
-          ((vertex-position-= (corridor-opposite corridor) new-x new-y)
-           (setf waypoint (corridor-opposite corridor))
-           (setf corridor nil)
-           (setf location nil))
-          ;; Corridor to corridor move.
-          ((eq direction reference-gateway)
-           (decf location)
-           (setf reference-gateway new-to-adjacent)
-           (setf opposite-gateway new-to-old))
-          ((eq direction opposite-gateway)
-           (incf location)
-           (setf reference-gateway new-to-old)
-           (setf opposite-gateway new-to-adjacent))
-          (t
-           (error "BUG: No specific case matched.")))))
+    (let (new-x new-y new-to-adjacent new-to-old)
+      (setf (values new-x new-y) (displace x y direction))
+      (setf new-to-adjacent (corridor-other-adjacent board new-x new-y x y))
+      (setf new-to-old (direction new-x new-y x y))
+      (cond
+        (waypoint
+         (let ((edge (vertex-edge-to waypoint direction)))
+           (cond
+             ;; From waypoint to waypoint move.
+             ((= 1 (edge-weight edge))
+              (setf waypoint (edge-sink edge)))
+             ;; From waypoint to corridor move.
+             (t
+              (setf corridor-length (edge-weight edge))
+              (let ((direction (edge-direction edge))
+                    (end (edge-sink edge))
+                    (end-direction (edge-direction (edge-complement edge))))
+                (if (reference waypoint direction end end-direction)
+                    (setf corridor (make-corridor :vertex waypoint
+                                                  :opposite end
+                                                  :direction direction)
+                          location 1
+                          reference-gateway new-to-old
+                          opposite-gateway new-to-adjacent)
+                    (setf corridor (make-corridor :vertex end
+                                                  :opposite waypoint
+                                                  :direction end-direction)
+                          location (1- corridor-length)
+                          reference-gateway new-to-adjacent
+                          opposite-gateway new-to-old)))
+              (nilf waypoint)))))
+        ;; Corridor to waypoint move.
+        ((vertex-position-= (corridor-vertex corridor) new-x new-y)
+         (setf waypoint (corridor-vertex corridor))
+         (setf corridor nil)
+         (setf location nil))
+        ((vertex-position-= (corridor-opposite corridor) new-x new-y)
+         (setf waypoint (corridor-opposite corridor))
+         (setf corridor nil)
+         (setf location nil))
+        ;; Corridor to corridor move.
+        ((eq direction reference-gateway)
+         (decf location)
+         (setf reference-gateway new-to-adjacent)
+         (setf opposite-gateway new-to-old))
+        ((eq direction opposite-gateway)
+         (incf location)
+         (setf reference-gateway new-to-old)
+         (setf opposite-gateway new-to-adjacent))
+        (t
+         (error "BUG: No specific case matched."))))
     (displacef x y direction))
   (values))
 
