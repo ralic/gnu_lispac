@@ -457,7 +457,7 @@
       (or (topmost-leftmost-p a-x a-y
                               b-x b-y)
           (and (= a-x b-x)
-               (= a-y a-y)
+               (= a-y b-y)
                (direction< direction-a direction-b))))))
 
 ;; Compute the corridor which contains (`x', `y').  Return the
