@@ -214,7 +214,8 @@
 
 ;; Should a waypoint be in this tile?.
 (defun waypointp (tiles x y)
-  (/= (tile-degree tiles x y) 2))
+  (and (not (aref tiles x y))
+       (/= (tile-degree tiles x y) 2)))
 
 ;; Regarding waypoints there is a vertex in every intersection (Tiles
 ;; with 1, 3 or 4 neighbors).
