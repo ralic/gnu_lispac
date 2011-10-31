@@ -247,27 +247,17 @@
   ;; The edge in the oposite direction.
   complement)
 
-;; Add or replace an edge from `source' to sink unless there is alredy
-;; a better one (With same or less `weight'.  Returns 2 values: the
-;; best edge from `source' to `weight'; and `t' if its fresh, `nil'
-;; otherwise.
-(defun vertex-join (source sink gateway-x gateway-y weight
-                    &optional complement)
-  (declare (vertex source sink))
-  (let* ((direction (direction (vertex-x source) (vertex-y source)
-                               gateway-x gateway-y))
-         (new-edge (make-edge sink weight direction complement)))
-    (dolist* (edge (vertex-edges source))
-      (when (eq sink (edge-sink edge))
-        (return-from vertex-join
-          (values edge
-                  (when (< weight (edge-weight edge))
-                    ;; If there is alredy a edge which connects the
-                    ;; same vertices with a weight greater than this
-                    ;; one, substitute it.
-                    (prog1 t (setf edge new-edge)))))))
-    (push new-edge (vertex-edges source))
-    (values new-edge t)))
+;; Add an edge and its complement between `a' and `b'.
+(defun vertex-link (a b weight a-g-x a-g-y b-g-x b-g-y)
+  (declare (vertex a b))
+  (declare (fixnum a-g-x a-g-y b-g-x b-g-y))
+  (let* ((a-g-d (direction (vertex-x a) (vertex-y a) a-g-x a-g-y))
+         (a-e (make-edge b weight a-g-d nil))
+         (b-g-d (direction (vertex-x b) (vertex-y b) b-g-x b-g-y))
+         (b-e (make-edge a weight b-g-d a-e)))
+    (setf (edge-complement a-e) b-e)
+    (push a-e (vertex-edges a))
+    (push b-e (vertex-edges b))))
 
 ;; Find a `edge' whose a gateway is in `direction' from `vertex'.
 (defun vertex-edge-to (vertex direction)
@@ -380,56 +370,30 @@
 ;;;;;; Computation
 
 (defun %compute-waypoint-graph (board starting-x starting-y)
-  (let* ((dimensions (array-dimensions (board-tiles board)))
-         (pending-list (list (make-vertex starting-x starting-y)))
-         (pending (make-sparse-table dimensions nil))
-         ;; Visited directions from pending vertices.
-         (visited-directions (make-hash-table :test #'eq))
-         ;; Holds all visited vertices.
+  (let* ((start (make-vertex starting-x starting-y))
+         (dimensions (array-dimensions (board-tiles board)))
+         (open (list start))
          (visited (make-sparse-table dimensions nil)))
-    (while pending-list
-      (let* ((current (pop pending-list))
-             (current-x (vertex-x current))
-             (current-y (vertex-y current)))
+    (setf (stref visited starting-x starting-y) start)
+    (while open
+      (let* ((this (pop open))
+             (this-x (vertex-x this))
+             (this-y (vertex-y this)))
         (do-connected-waypoints (board
                                  distance
-                                 (terminal-x current-x)
-                                 (terminal-y current-y)
-                                 :directions-not (gethash current
-                                                          visited-directions)
+                                 (that-x this-x)
+                                 (that-y this-y)
+                                 :directions-not (map 'list #'edge-direction (vertex-edges this))
                                  :gateway-x gateway-x
                                  :gateway-y gateway-y
-                                 :waypoint-gateway-x waypoint-gateway-x
-                                 :waypoint-gateway-y waypoint-gateway-y)
-          (when (stref visited terminal-x terminal-y)
-            (error "BUG: Visiting alredy visited node"))
-          (switch
-            ;; Vertex is new and not on pending queue.  Add it.
-            ((not (stref pending terminal-x terminal-y))
-             (let ((terminal (make-vertex terminal-x terminal-y)))
-               (push terminal pending-list)
-               (setf (stref pending terminal-x terminal-y) terminal))
-             (resume))
-            (t
-             (let ((terminal (stref pending terminal-x terminal-y)))
-               (multiple-value-bind (edge freshp)
-                   (vertex-join current terminal
-                                gateway-x gateway-y
-                                distance)
-                 (when freshp
-                   (setf (edge-complement edge)
-                         (vertex-join terminal
-                                      current
-                                      waypoint-gateway-x
-                                      waypoint-gateway-y
-                                      distance
-                                      edge)))
-                 (push (direction terminal-x terminal-y
-                                  waypoint-gateway-x waypoint-gateway-y)
-                       (gethash terminal visited-directions)))))))
-        ;; Mark as visited
-        (nilf (stref pending current-x current-y))
-        (setf (stref visited current-x current-y) current)))
+                                 :waypoint-gateway-x that-gateway-x
+                                 :waypoint-gateway-y that-gateway-y)
+          (let ((that (or (stref visited that-x that-y)
+                          (setf (stref visited that-x that-y)
+                                (let ((new (make-vertex that-x that-y)))
+                                  (push new open)
+                                  new)))))
+            (vertex-link this that distance gateway-x gateway-y that-gateway-x that-gateway-y)))))
     visited))
 
 ;; Compute `waypoints' slot of the given `board' according to its
