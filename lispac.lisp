@@ -959,11 +959,12 @@
                               (t
                                (- (* *tile-size* (1+ right)) r)))
                             x)))))
-        (with-unit-boundary (unit "NEW-")
-          (when (or (/= new-left left) (/= new-top top))
-            (tracker-move tracker (direction left top new-left new-top))
-            (assert (and (= (tracker-x tracker) new-left)
-                         (= (tracker-y tracker) new-top)))))))))
+        ;; (with-unit-boundary (unit "NEW-")
+        ;;   (when (or (/= new-left left) (/= new-top top))
+        ;;     (tracker-move tracker (direction left top new-left new-top))
+        ;;     (assert (and (= (tracker-x tracker) new-left)
+        ;;                  (= (tracker-y tracker) new-top)))))
+        ))))
 
 ;; Move `unit' up to `max-pixels' to the begin of the next
 ;; left/right/top/left row or column according to `direction'.  Return
@@ -1395,11 +1396,7 @@
                               (1- (* *tile-size* (1+ bottom))))))
           (draw-rectangle pacman-square :color *white*)))
       ;; Do the actual pacman moves
-      (unit-act *pacman*)
-      ;; If nessesary, update gradient
-      (when (or (/= left *pacman-gradient-center-x*)
-                (/= top *pacman-gradient-center-y*))
-        (update-pacman-gradient left top))))
+      (unit-act *pacman*)))
   (draw *pacman*))
 
 ;; Move the monsters and check colisions.
@@ -1446,10 +1443,7 @@
 (defun update ()
   (blit-surface (board-surface *board*))
   (incf (clock-ticks *clock*))
-  (update-monsters)
   (update-pacman)
-  (update-state)
-  (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red*
                     :surface *default-display*)
   (update-display))
@@ -1470,18 +1464,8 @@
             (make-instance 'pacman
                            :board *board*
                            :controller #'standard-controller))
-      (setf *pacman-gradient*
-            (make-array (list (board-width *board*) (board-height *board*))
-                        :initial-element most-positive-fixnum))
       (with-unit-boundary (*pacman*)
-        (declare (ignore right bottom))
-        (setf *pacman-gradient-center-x* left)
-        (setf *pacman-gradient-center-y* top)
-        (board-compute-gradient *board*
-                                *pacman-gradient*
-                                left
-                                top
-                                *pacman-gradient-max-distance*))
+        (declare (ignore right bottom)))
       (with-surface
           (*default-surface* (create-surface *width* *height* :y 100))
         (update-board)
