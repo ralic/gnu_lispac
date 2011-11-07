@@ -1003,6 +1003,24 @@
                     x)))))
         (move-unit unit (min max-pixels pixels-to-next-tile) direction)))))
 
+(defun unit-climb-tree (unit max-pixels tree)
+  ;; TODO: Accound for the case in which the unit is between two tiles
+  ;; with the same distance to the tree's center, and the unit is
+  ;; farther from the one in which its tracker is centered.
+  (with-unit-boundary (unit)
+    (let ((parent (tracker-parent (unit-tracker unit) tree)))
+      (cond
+        ((/= left right)
+         (if (eq parent :right)
+             (unit-align unit max-pixels :right)
+             (unit-align unit max-pixels :left)))
+        ((/= top bottom)
+         (if (eq parent :down)
+             (unit-align unit max-pixels :down)
+             (unit-align unit max-pixels :up)))
+        (t
+         (move-unit unit max-pixels parent))))))
+
 ;;;;; Controllers
 
 (defun unit-act (unit)
