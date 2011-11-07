@@ -40,10 +40,6 @@
 ;; If non-nil, print the tiles the units uses.
 (defvar *print-units-rectangles-p* nil)
 
-;; If non-nil, print tile background in grayscale according to it
-;; distance to respawn point.
-(defvar *print-respawn-gradient* nil)
-
 (defvar *print-waypoints* nil)
 
 ;; Board stored as a board object.
@@ -62,10 +58,7 @@
 (defvar *targets* ())
 (defvar *monsters* ())
 
-(defvar *pacman-gradient-center-x*)
-(defvar *pacman-gradient-center-y*)
-(defvar *pacman-gradient*)
-(defvar *pacman-gradient-max-distance*)
+(defvar *pacman-wpt*)
 
 ;; Default ticks monsters will be vulnerable when pacman eat a super
 ;; target.
@@ -575,20 +568,20 @@
         (distances (make-hash-table :test #'eq))
         (predecessors (make-hash-table :test #'eq)))
     ;; Enqueue starting tiles.
-    (if (waypointp tiles x y)
-        (cl-heap:enqueue pending (waypoint board x y) 0)
-        (do-connected-waypoints
-            (board
-             distance
-             (neighbor-x x)
-             (neighbor-y y)
-             :waypoint-gateway-x gateway-x
-             :waypoint-gateway-y gateway-y)
-          (cl-heap:add-to-heap pending
-                               (list distance
-                                     (direction neighbor-x neighbor-y
-                                                gateway-x gateway-y)
-                                     (waypoint board neighbor-x neighbor-y)))))
+    (aif (waypoint *board* x y)
+         (cl-heap:add-to-heap pending (list 0 nil it))
+         (do-connected-waypoints
+             (board
+              distance
+              (neighbor-x x)
+              (neighbor-y y)
+              :waypoint-gateway-x gateway-x
+              :waypoint-gateway-y gateway-y)
+           (cl-heap:add-to-heap pending
+                                (list distance
+                                      (direction neighbor-x neighbor-y
+                                                 gateway-x gateway-y)
+                                      (waypoint board neighbor-x neighbor-y)))))
     ;; Perform a uniform cost serach.
     (loop until (cl-heap:is-empty-heap-p pending)
           for item = (cl-heap:pop-heap pending)
@@ -615,13 +608,6 @@
                      (cl-heap:add-to-heap pending
                                           (list total direction neighbor)))))))
     (values predecessors distances)))
-
-(defun board-compute-waypoint-tree (board center-x center-y)
-  (let ((parents
-         (board-compute-vertices-parents board center-x center-y)))
-    (make-waypoints-tree center-x
-                         center-y
-                         parents)))
 
 ;; Update slot `gradient' of `board'
 (defun board-update-respawn-gradient (board &optional x y)
@@ -909,9 +895,18 @@
 ;; Move in the requested direction and return how much
 ;; pixels the unit  moved
 
+(defgeneric move-unit (unit pixels direction)
+  (declare (fixnums pixels)))
+
+;; Called when the unit moves from one tile to another (Open to
+;; interpretation).
+(defgeneric unit-update-tile (unit old-x old-y x y)
+  (declare (fixnum old-x old-y x y)))
+
 ;; Note: We can't corretly move more than one tile.
-(defmethod move-unit ((unit unit) pixels direction)
+(defun %move-unit (unit pixels direction)
   (declare ;; (direction direction) and define direction type - MXCC
+   (unit unit)
    (fixnum pixels))
   (with-unit-boundary (unit)
     (let ((board-width (board-width *board*))
@@ -958,13 +953,21 @@
                                (- (* *tile-size* (+ right 2)) r))
                               (t
                                (- (* *tile-size* (1+ right)) r)))
-                            x)))))
-        ;; (with-unit-boundary (unit "NEW-")
-        ;;   (when (or (/= new-left left) (/= new-top top))
-        ;;     (tracker-move tracker (direction left top new-left new-top))
-        ;;     (assert (and (= (tracker-x tracker) new-left)
-        ;;                  (= (tracker-y tracker) new-top)))))
-        ))))
+                            x)))))))))
+
+(defmethod unit-update-tile ((unit unit) old-x old-y x y)
+  (with-slots (tracker) unit
+    (tracker-move tracker (direction old-x old-y x y))
+    (assert (and (= (tracker-x tracker) x)
+                 (= (tracker-y tracker) y)))))
+
+(defmethod move-unit ((unit unit) pixels direction)
+  (with-slots (tracker) unit
+    (with-unit-boundary (unit)
+      (prog1 (%move-unit unit pixels direction)
+        (with-unit-boundary (unit "NEW-")
+          (when (or (/= new-left left) (/= new-top top))
+            (unit-update-tile unit left top new-left new-top)))))))
 
 ;; Move `unit' up to `max-pixels' to the begin of the next
 ;; left/right/top/left row or column according to `direction'.  Return
@@ -996,54 +999,6 @@
                         (+ r (* *tile-size* (1+ right))))
                     x)))))
         (move-unit unit (min max-pixels pixels-to-next-tile) direction)))))
-
-;; Move `unit' up to `max-pixels' towards lower-values of the
-;; `gradient' when `climbp' is non-nil, or higher ones otherwise.
-(defun unit-climb-gradient (unit max-pixels gradient &optional (climbp t))
-  (flet ((gradient (x y)
-           (aref gradient x y)))
-    (with-unit-boundary (unit)
-      (cond
-        ;; Unit is between two tiles horizontaly
-        ((/= left right)
-         (if (boolean= climbp (< (gradient left top) (gradient right top)))
-             (unit-align unit max-pixels :left)
-             (unit-align unit max-pixels :right)))
-        ;; Unit is between two tiles verticaly
-        ((/= top bottom)
-         (if (boolean= climbp (< (gradient left top) (gradient left bottom)))
-             (unit-align unit max-pixels :up)
-             (unit-align unit max-pixels :down)))
-        ;; Unit is just on one tile
-        (t
-         (let ((current-gradient-value (gradient left top))
-               (rightmost-tile (1- (board-width *board*)))
-               (bottomost-tile (1- (board-height *board*))))
-           ;; Climb to a neighbor tile with lower gradient value.
-           ;; Note that the difference in gradient value should
-           ;; always be 1, so it isn't nessesary to check other
-           ;; neighbors.
-           (cond
-             ((and (< 0 left)
-                   (if climbp
-                       (< (gradient (1- left) top) current-gradient-value)
-                       (> (gradient (1- left) top) current-gradient-value)))
-              (unit-align unit max-pixels :left))
-             ((and (> rightmost-tile left)
-                   (if climbp
-                       (< (gradient (1+ left) top) current-gradient-value)
-                       (> (gradient (1+ left) top) current-gradient-value)))
-              (unit-align unit max-pixels :right))
-             ((and (< 0 top)
-                   (if climbp
-                       (< (gradient left (1- top)) current-gradient-value)
-                       (> (gradient left (1- top)) current-gradient-value)))
-              (unit-align unit max-pixels :up))
-             ((and (> bottomost-tile top)
-                   (if climbp
-                       (< (gradient left (1+ top)) current-gradient-value)
-                       (> (gradient left (1+ top)) current-gradient-value)))
-              (unit-align unit max-pixels :down)))))))))
 
 ;;;;; Controllers
 
@@ -1092,6 +1047,9 @@
     :accessor pacman-direction)
    (controller
     :initform #'standard-controller)))
+
+(defmethod unit-update-tile :after ((pacman pacman) old-x old-y new-x new-y)
+  (setf *pacman-wpt* (make-waypoints-tree *board* new-x new-y)))
 
 (defmethod draw ((pacman pacman))
   (with-slots (x y direction)
