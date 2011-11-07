@@ -223,6 +223,12 @@ function in order to go on on th following conditions."
 (defun make-point (x y)
   (vector x y))
 
+(defun %tile-center (w)
+  (values (round (* *tile-size* (+ w 1/2)))))
+
+(defun tile-center (x y)
+  (make-point (%tile-center x) (%tile-center y)))
+
 
 ;;; Definitions & declarations
 

@@ -75,6 +75,10 @@
     :initarg :surface
     :type surface
     :accessor board-surface)
+   (pacman-spawn
+    :initarg :pacman-spawn
+    :type point
+    :accessor board-pacman-spawn)
    (respawn
     :initarg :respawn
     :type point
@@ -751,7 +755,8 @@
        nil)
       (waypoint
        (waypoints-tree-parent tree waypoint))
-      ((corridor= corridor (waypoints-tree-corridor tree))
+      ((and (waypoints-tree-corridor tree)
+            (corridor= corridor (waypoints-tree-corridor tree)))
        (if (> location (waypoints-tree-location tree))
            reference-gateway
            opposite-gateway))
@@ -842,12 +847,10 @@
   ((x
     :initarg :x
     :type fixnum
-    :initform (round *width* 2)
     :accessor unit-x)
    (y
     :initarg :y
     :type fixnum
-    :initform (round *height* 2)
     :accessor unit-y)
    (speed
     :initarg :speed
@@ -1414,12 +1417,15 @@
   (with-init (sdl-init-video)
     (let* ((*width* (* *tile-size* (board-width *board*)))
            (*height* (* *tile-size* (board-height *board*)))
+           (pacman-spawn (board-pacman-spawn *board*))
            (screen (window *width* (+ *height* 100) :title-caption "Lispac")))
       (setf (frame-rate) *fps*)
       (clear-display *black*)
       (initialise-default-font *font-10x20*)
       (setf *pacman*
             (make-instance 'pacman
+                           :x (%tile-center (x pacman-spawn))
+                           :y (%tile-center (y pacman-spawn))
                            :board *board*
                            :controller #'standard-controller))
       (with-unit-boundary (*pacman*)
