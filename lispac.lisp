@@ -83,9 +83,6 @@
     :initarg :respawn
     :type point
     :accessor board-respawn)
-   (respawn-gradient
-    :initarg :respawn-gradient
-    :accessor board-respawn-gradient)
    (waypoints
     :initarg :waypoints
     :type sparse-table
@@ -96,11 +93,7 @@
                  :tiles
                  (make-array (list width height)
                              :element-type '(member t nil)
-                             :initial-element tile)
-                 :respawn-gradient
-                 (make-array (list width height)
-                             :element-type 'fixnum
-                             :initial-element most-positive-fixnum)))
+                             :initial-element tile)))
 
 (defun tile (board x y)
   (declare (board board)
@@ -612,14 +605,6 @@
                      (cl-heap:add-to-heap pending
                                           (list total direction neighbor)))))))
     (values predecessors distances)))
-
-;; Update slot `gradient' of `board'
-(defun board-update-respawn-gradient (board &optional x y)
-  (declare (board board))
-  (with-slots (respawn respawn-gradient) board
-    (when (or x y)
-      (setf respawn (point :x x :y y)))
-    (board-compute-gradient board respawn-gradient x y)))
 
 ;;;;;; Trackers
 
@@ -1280,7 +1265,7 @@
      (setf (unit-y *pacman*) (/ (- *height* 100) 2)))))
 
 (defun update-board ()
-  (with-slots (surface respawn-gradient) *board*
+  (with-slots (surface) *board*
     (let ((width (board-width *board*))
           (height (board-height *board*))
           (waypoints (board-waypoints *board*)))
@@ -1288,20 +1273,15 @@
                                     (* *tile-size* height)))
       (dotimes (y height)
         (dotimes (x width)
-          (let* ((gradient-value (min 255 (* 5 (aref respawn-gradient x y))))
-                 (color (cond
-                          ((tile *board* x y)
-                           *red*)
-                          (*print-waypoints*
-                           (if (stref waypoints x y)
-                               *white*
-                               *black*))
-                          (*print-respawn-gradient*
-                           (color :r gradient-value
-                                  :g gradient-value
-                                  :b gradient-value))
-                          (t
-                           *black*))))
+          (let ((color (cond
+                         ((tile *board* x y)
+                          *red*)
+                         (*print-waypoints*
+                          (if (stref waypoints x y)
+                              *white*
+                              *black*))
+                         (t
+                          *black*))))
             (draw-box-* (* *tile-size* x) (* *tile-size* y)
                         *tile-size* *tile-size*
                         :surface surface
