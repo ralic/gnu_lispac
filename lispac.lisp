@@ -1069,6 +1069,11 @@
    (controller
     :initform #'standard-controller)))
 
+(defmethod initialize-instance :after ((pacman pacman) &rest initargs)
+  (declare (ignore initargs))
+  (with-unit-boundary (pacman)
+    (setf *pacman-wpt* (make-waypoints-tree *board* left top))))
+
 (defmethod unit-update-tile :after ((pacman pacman) old-x old-y new-x new-y)
   (setf *pacman-wpt* (make-waypoints-tree *board* new-x new-y)))
 
