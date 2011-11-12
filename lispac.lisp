@@ -58,6 +58,7 @@
 (defvar *targets* ())
 (defvar *monsters* ())
 
+(defvar *next-direction* :right)
 (defvar *pacman-wpt*)
 
 ;; Default ticks monsters will be vulnerable when pacman eat a super
@@ -842,10 +843,6 @@
     :type fixnum
     :initform 2
     :accessor unit-speed)
-   (controller
-    :initarg :controller
-    :type function
-    :accessor unit-controller)
    (tracker
     :initarg :tracker
     :type tracker
@@ -1006,40 +1003,6 @@
         (t
          (move-unit unit max-pixels parent))))))
 
-;;;;; Controllers
-
-(defun unit-act (unit)
-  (declare (unit unit))
-  (funcall (unit-controller unit) unit))
-
-(defvar *next-direction* :right)
-
-;; Move unit according to keyboard input.
-(defun standard-controller (unit)
-  (declare (unit unit))
-  (with-slots (x y speed direction) unit
-    (if (zerop (move-unit unit speed *next-direction*))
-        (unit-align unit speed direction)
-        (setf direction *next-direction*))))
-
-(defmacro define-climber (name gradient climbp)
-  (with-gensyms (unit)
-    `(defun ,name (,unit)
-       (declare (unit ,unit))
-       (unit-climb-gradient ,unit (unit-speed ,unit) ,gradient ,climbp))))
-
-;; Move a unit towards the respawn point for exaple, an spirit _dead_
-;; monster
-(define-climber spirit-controller (board-respawn-gradient *board*) t)
-
-;; Move a unit towards pacman if Manhattan disatance to it <=
-;; `*pacman-gradient-max-depth*'
-(define-climber pacman-seeker-controller *pacman-gradient* t)
-
-;; Move a unit farther from pacman if Manhattan disatance to it <=
-;; `*pacman-gradient-max-depth*'
-(define-climber flee-from-pacman-controller *pacman-gradient* nil)
-
 ;;;;; Pacman
 
 (defclass pacman (unit)
@@ -1050,9 +1013,7 @@
     :initarg :direction
     :type (member :up :down :left :right)
     :initform :right
-    :accessor pacman-direction)
-   (controller
-    :initform #'standard-controller)))
+    :accessor pacman-direction)))
 
 (defmethod initialize-instance :after ((pacman pacman) &rest initargs)
   (declare (ignore initargs))
@@ -1061,6 +1022,12 @@
 
 (defmethod unit-update-tile :after ((pacman pacman) old-x old-y new-x new-y)
   (setf *pacman-wpt* (make-waypoints-tree *board* new-x new-y)))
+
+(defmethod unit-act ((pacman pacman))
+  (with-slots (x y speed direction) pacman
+    (if (zerop (move-unit pacman speed *next-direction*))
+        (unit-align pacman speed direction)
+        (setf direction *next-direction*))))
 
 (defmethod draw ((pacman pacman))
   (with-slots (x y direction)
