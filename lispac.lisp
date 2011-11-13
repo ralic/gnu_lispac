@@ -82,7 +82,7 @@
     :accessor board-pacman-spawn)
    (respawn
     :initarg :respawn
-    :type point
+    :type waypoints-tree
     :accessor board-respawn)
    (waypoints
     :initarg :waypoints
@@ -1094,30 +1094,36 @@
 (defmethod monster-spiritp ((monster monster))
   (not (monster-livep monster)))
 
-;; Called for example, when pacman eat a super target.
-(defgeneric monster-make-vulnerable (monster))
-
-;; Turn the monster into a "spirit" (Dead and moving to the respawn
-;; point).  Called for example, when pacman eat the monster.
-(defgeneric monster-kill (monster))
-
-;; Restore standard monster behaviour.
-(defgeneric monster-restore (monster))
-
 (defmethod monster-make-vulnerable ((monster monster))
-  (setf (unit-controller monster) #'flee-from-pacman-controller)
   (setf (monster-vulnerable-until monster)
         (+ (clock-ticks *clock*) *monster-vulnerable-ticks*)))
 
-(defmethod monster-kill ((monster monster))
-  (setf (monster-vulnerable-until monster) (clock-ticks *clock*))
-  (nilf (monster-livep monster))
-  (setf (unit-controller monster) #'spirit-controller))
-
-(defmethod monster-restore ((monster monster))
-  (setf (monster-vulnerable-until monster) (clock-ticks *clock*))
-  (tf (monster-livep monster))
-  (setf (unit-controller monster) #'pacman-seeker-controller))
+(defmethod unit-act ((monster monster))
+  (when (= (monster-vulnerable-until monster) (clock-ticks *clock*))
+    (tf (monster-livep monster)))
+  (cond
+    ;; Monster is in <<spirit>> form
+    ((not (monster-livep monster))
+     (let ((respawn-point (board-respawn *board*)))
+       (unit-climb-tree monster (unit-speed monster) respawn-point)
+       (with-unit-boundary (monster)
+         ;; Did monster reached the respawn point?
+         (when (and (= left (waypoints-tree-center-x respawn-point))
+                    (= top (waypoints-tree-center-y respawn-point)))
+           (setf (monster-vulnerable-until monster) (clock-ticks *clock*))
+           (tf (monster-livep monster))))))
+    ;; No contact with pacman
+    ((<= *tile-size*
+         (distance-* (unit-x monster) (unit-y monster)
+                     (unit-x *pacman*) (unit-y *pacman*)))
+     (unit-climb-tree monster (unit-speed monster) *pacman-wpt*))
+    ;; Pacman contact with hostile monster
+    ((monster-hostilep monster)
+     ;; TODO: Put something more friendly here
+     (error "Monster ate pacman"))
+    ;; Pacman contact with vulnerable monster
+    ((monster-vulnerablep monster)
+     (nilf (monster-livep monster)))))
 
 (defmethod draw ((monster monster))
   (with-slots (x y) monster
@@ -1335,35 +1341,7 @@
   (dolist (monster *monsters*)
     (declare (monster monster))
     (unit-act monster)
-    (when (= (monster-vulnerable-until monster) (clock-ticks *clock*))
-      (monster-restore monster))
-    (cond
-      ;; Monster is in <<spirit>> form
-      ((not (monster-livep monster))
-       (let ((respawn-x (x (board-respawn *board*)))
-             (respawn-y (y (board-respawn *board*))))
-         (with-unit-boundary (monster)
-           ;; Did monster reached the respawn point?
-           (when (and (= respawn-x left right)
-                      (= respawn-y top bottom))
-             (monster-restore monster)))
-         (draw monster)))
-
-      ;; No colision
-      ((<= *tile-size*
-           (distance-* (unit-x monster) (unit-y monster)
-                       (unit-x *pacman*) (unit-y *pacman*)))
-       (draw monster))
-
-      ;; Colision with hostile monster
-      ((monster-hostilep monster)
-
-       ;; TODO: Put something more friendly here
-       (error "Monster ate pacman"))
-
-      ;; Colision with vulnerable monster
-      ((monster-vulnerablep monster)
-       (monster-kill monster)))))
+    (draw monster)))
 
 (defun draw-waypoints (waypoints)
   (dolist (waypoint waypoints)
@@ -1374,6 +1352,7 @@
 (defun update ()
   (blit-surface (board-surface *board*))
   (incf (clock-ticks *clock*))
+  (update-monsters)
   (update-pacman)
   (draw-rectangle-* 0 100 *width* *height* :color *red*
                     :surface *default-display*)
@@ -1396,8 +1375,7 @@
             (make-instance 'pacman
                            :x (%tile-center (x pacman-spawn))
                            :y (%tile-center (y pacman-spawn))
-                           :board *board*
-                           :controller #'standard-controller))
+                           :board *board*))
       (with-unit-boundary (*pacman*)
         (declare (ignore right bottom)))
       (with-surface
