@@ -1354,6 +1354,7 @@
   (incf (clock-ticks *clock*))
   (update-monsters)
   (update-pacman)
+  (update-targets)
   (draw-rectangle-* 0 100 *width* *height* :color *red*
                     :surface *default-display*)
   (update-display))
